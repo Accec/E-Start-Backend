@@ -9,4 +9,7 @@ venv
 uploads/
 logs/
 test/
-config/*
+config/
+!config/sample.py
+!config/base.py
+!config/__init__.py
