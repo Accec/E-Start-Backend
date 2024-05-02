@@ -2,7 +2,6 @@ from utils.response import Successfully, ArgsInvalidError, RateLimitError
 from utils.router import UserBlueprint
 from utils.util import http_response
 from sanic_ext import validate, openapi
-from sanic_ext import serializer
 
 from sanic import request
 

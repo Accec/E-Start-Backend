@@ -16,6 +16,6 @@ MysqlUsername = 'root'
 MysqlPassword = ''
 MysqlDatabaseName = 'E-starter'
 #Redis设置
-RedisUrl = "192.168.0.248"
+RedisUrl = "redis://192.168.0.248"
 #CORS 设置
 CorsDomains = ['localhost.com']
