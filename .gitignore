@@ -9,4 +9,4 @@ venv
 uploads/
 logs/
 test/
-config/
+config/*
