@@ -65,7 +65,7 @@ class JwtAuth:
                         if not all(perm in user_permissions for perm in permissions):
                             new_log = Log(user = user, api = request.uri_template, action = "Privilege escalation", ip = request.ctx.real_ip, ua = request.ctx.ua, level = LOG_LEVEL_HIGH)
                             await new_log.save()
-                            return http_response(AuthorizedError.code, AuthorizedError.msg, status=401)
+                            return http_response(AuthorizedError.code, AuthorizedError.msg, status=403)
                                             
                     response = await f(request, *args, **kwargs)
                     return response
