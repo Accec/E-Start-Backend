@@ -24,7 +24,7 @@ JwtAuth = jwt.JwtAuth()
 @openapi.response(status=403, content={"application/json": serializers.AuthorizedErrorResponse.model_json_schema()}, description="Authorized error")
 @openapi.response(status=500, content={"application/json": serializers.ArgsInvalidResponse.model_json_schema()}, description="Args invalid")
 @openapi.response(status=429, content={"application/json": serializers.RateLimitResponse.model_json_schema()}, description="Rate limit")
-@JwtAuth.authorized("edit")
+@JwtAuth.authorized("login")
 async def get_dashboard(request: Request):
     
     return http_response(status = 200, code = Successfully.code, msg = Successfully.msg)
