@@ -9,6 +9,8 @@ LogsPath = "logs"
 #Sanic设置
 SanicHost = "localhost"
 SanicPort = 8000
+#Nginx配置
+ForwardedSecret = ""
 #Mysql设置
 MysqlHost = "localhost"
 MysqlPort = 3306

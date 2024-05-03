@@ -10,10 +10,8 @@ from modules.auth import jwt
 from utils import redis_conn
 
 Config = config.Config()
-Config = Config.load_config()
 JwtAuth = jwt.JwtAuth(Config.JwtSecretKey)
 RedisConn = redis_conn.RedisClient(Config.RedisUrl)
-
 Server = create_app(Sanic("E-Starter"))
 
 Logging = logger.Logger()

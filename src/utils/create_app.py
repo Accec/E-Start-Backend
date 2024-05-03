@@ -48,11 +48,17 @@ def create_app(server):
 
     
     os.environ['LOG_PATH'] = Config.LogsPath
-    server.config.SERVER_NAME = f"{Config.SanicHost}:{Config.SanicPort}"
-    server.config.CORS_ORIGINS = ";".join(Config.CorsDomains)
-    server.config.LOGGING = True
-    
 
+    server.config.SERVER_NAME = f"{Config.SanicHost}:{Config.SanicPort}"
+    server.config.FORWARDED_SECRET = Config.ForwardedSecret
+    server.config.CORS_ORIGINS = ";".join(Config.CorsDomains)
+    
+    server.ext.openapi.add_security_scheme(
+        "token",
+        "http",
+        scheme="bearer",
+        bearer_format="JWT",
+    )
     register_tortoise(
             server, config = TortoiseConfig,
             generate_schemas=True

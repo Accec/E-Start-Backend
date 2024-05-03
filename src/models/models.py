@@ -4,19 +4,21 @@ from tortoise import fields
 class Log(Model):
     id = fields.BigIntField(pk = True, description = "ID")
 
-    user = fields.ForeignKeyField("e-starter.User", related_name="user", on_delete=fields.CASCADE)
+    user = fields.ForeignKeyField("e-starter.User", related_name="log", on_delete=fields.CASCADE)
 
-    api = fields.TextField(description = "接口名称")
-    action = fields.TextField(description = "行为描述")
+    api = fields.CharField(max_length=512, index = True, description = "接口URI")
+    action = fields.CharField(max_length=512, index = True, description = "行为描述")
 
-    ip = fields.CharField(max_length=64, description = "操作IP")
-    ua = fields.CharField(max_length=255, description = "访问UA")
+    ip = fields.CharField(index = True, max_length=64, description = "操作IP")
+    ua = fields.CharField(index = True, max_length=255, description = "访问UA")
+
+    level = fields.IntField(index = True, max_length=32, description = "日志等级")
 
     update_time = fields.DatetimeField(auto_now=True, description="更新时间")
     create_time = fields.DatetimeField(auto_now_add=True, description="创建时间")
 
     class Meta:
-        table = "logs"
+        table = "log"
 
 class User(Model):
     id = fields.BigIntField(pk = True, description = "ID")
@@ -27,6 +29,7 @@ class User(Model):
     open_id = fields.CharField(max_length = 32, index = True, description = "OPENID")
 
     logs = fields.ReverseRelation["Log"]
+    roles = fields.ManyToManyField('e-starter.Role', related_name='users', through='user_role')
     
     update_time = fields.DatetimeField(auto_now=True, description="更新时间")
     create_time = fields.DatetimeField(auto_now_add=True, description="创建时间")
@@ -38,6 +41,8 @@ class Role(Model):
     id = fields.IntField(pk=True, description="ID")
     role_name = fields.CharField(max_length=100, description="角色名")
 
+    permissions = fields.ManyToManyField('e-starter.Permission', related_name='roles', through='role_permission')
+
     update_time = fields.DatetimeField(auto_now=True, description="更新时间")
     create_time = fields.DatetimeField(auto_now_add=True, description="创建时间")
 
@@ -46,32 +51,10 @@ class Role(Model):
 
 class Permission(Model):
     id = fields.IntField(pk=True, description="ID")
-    permission = fields.CharField(max_length=100, description="权限名")
+    permission_title = fields.CharField(index = True, max_length=100, description="权限名")
 
     update_time = fields.DatetimeField(auto_now=True, description="更新时间")
     create_time = fields.DatetimeField(auto_now_add=True, description="创建时间")
 
     class Meta:
         table = "permission"
-
-class UserRole(Model):
-    id = fields.IntField(pk=True, description="ID")
-    user = fields.ForeignKeyField("e-starter.User", related_name="roles", on_delete=fields.CASCADE)
-    role = fields.ForeignKeyField("e-starter.Role", related_name="users", on_delete=fields.CASCADE)
-
-    update_time = fields.DatetimeField(auto_now=True, description="更新时间")
-    create_time = fields.DatetimeField(auto_now_add=True, description="创建时间")
-
-    class Meta:
-        table = "user_role"
-
-class RolePermission(Model):
-    id = fields.IntField(pk=True, description="ID")
-    role = fields.ForeignKeyField("e-starter.Role", related_name="permissions", on_delete=fields.CASCADE)
-    permission = fields.ForeignKeyField("e-starter.Permission", related_name="roles", on_delete=fields.CASCADE)
-
-    update_time = fields.DatetimeField(auto_now=True, description="更新时间")
-    create_time = fields.DatetimeField(auto_now_add=True, description="创建时间")
-
-    class Meta:
-        table = "role_permission"

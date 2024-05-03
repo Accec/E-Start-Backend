@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field
 from typing import Union, Optional
-from utils.response import Successfully, ArgsInvalidError, RateLimitError, RequestError
+from utils.response import Successfully, ArgsInvalidError, RateLimitError, RequestError, AccountOrPasswordInvalid
 
 class LoginPayloads(BaseModel):
     account: str = Field(min_length=5, max_length=30)
@@ -15,6 +15,11 @@ class SuccessfullyResponse(BaseModel):
 class RequestErrorResponse(BaseModel):
     code: int = Field(default=RequestError.code)
     msg: str = Field(default=RequestError.msg)
+    result: Optional[Union[dict, list, str]] = Field(default=None)
+
+class AccountOrPasswordInvalidResponse(BaseModel):
+    code: int = Field(default=AccountOrPasswordInvalid.code)
+    msg: str = Field(default=AccountOrPasswordInvalid.msg)
     result: Optional[Union[dict, list, str]] = Field(default=None)
 
 class ArgsInvalidResponse(BaseModel):

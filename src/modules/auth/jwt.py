@@ -3,8 +3,12 @@ from functools import wraps
 
 import datetime
 
+from utils.constant import LOG_LEVEL_HIGH
 from utils.response import AuthorizedError, TokenError
 from utils.util import http_response
+
+from models import User, Permission, Log
+
 
 import asyncio
 
@@ -12,7 +16,7 @@ import asyncio
 class JwtAuth:
     _instance = None
 
-    def __new__(cls, secret_key):
+    def __new__(cls, secret_key=None):
         if cls._instance is None:
             cls._instance = super().__new__(cls)
             cls._instance._init(secret_key)
@@ -26,18 +30,19 @@ class JwtAuth:
             'user_id': user_id,
             'exp': datetime.datetime.now(datetime.UTC) + datetime.timedelta(seconds = exp)
         }
-
-        encoded_jwt = PyJWT.encode(payload, self.secret_key, algorithm='HS256')
+        
+        encoded_jwt = PyJWT().encode(payload, self.secret_key, algorithm='HS256')
         return encoded_jwt
 
-    def decode_jwt(self, token):
-        try:
-            decode_jwt = PyJWT.decode(token.encode(), self.secret_key, algorithms=['HS256'])
+    def decode_jwt(self, token:str):
+        try:            
+            decode_jwt = PyJWT().decode(token.encode(), self.secret_key, algorithms=['HS256'])
             return decode_jwt
-        except:
+        except Exception as e:
+            print (e.__str__())
             return False
 
-    def authorized(self):
+    def authorized(self, *permissions):
         def decorator(f):
             @wraps(f)
             async def decorated_function(request, *args, **kwargs):
@@ -46,22 +51,25 @@ class JwtAuth:
 
                 if is_authorized:
                     request.ctx.user = is_authorized
-                    # 如果提供了permissions参数并且用户存在
-                    user = kwargs.setdefault(user, None)
-                    permissions = kwargs.setdefault(permissions, None)
-                    if user and permissions:
-                        user = kwargs['user']
-                        user_roles = await user.roles.all()
-                        # 检查用户是否具有所有必需的权限
-                        results = await asyncio.gather(*[
-                            role.permissions.filter(permission=permission).exists() for role in user_roles for permission in permissions
-                        ])
-                        if not all(results):
-                            return http_response(AuthorizedError.code, AuthorizedError.msg)
-                    
+                    if permissions:
+                        user = await User.get(id=is_authorized["user_id"]).prefetch_related("roles")
+                        roles = await user.roles.all()  # 获取关联的角色列表
+                        # 获取用户所有角色的权限
+                        user_permissions = set()
+                        for role in roles:
+                            role_permissions = await role.permissions.all()
+                            for perm in role_permissions:
+                                user_permissions.add(perm.permission_title)
+
+                        # 检查用户是否拥有所需的所有权限
+                        if not all(perm in user_permissions for perm in permissions):
+                            new_log = Log(user = user, api = request.uri_template, action = "Privilege escalation", ip = request.ctx.real_ip, ua = request.ctx.ua, level = LOG_LEVEL_HIGH)
+                            await new_log.save()
+                            return http_response(AuthorizedError.code, AuthorizedError.msg, status=401)
+                                            
                     response = await f(request, *args, **kwargs)
                     return response
                 else:
-                    return http_response(TokenError.code, TokenError.msg)
+                    return http_response(TokenError.code, TokenError.msg, status=401)
             return decorated_function
         return decorator

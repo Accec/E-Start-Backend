@@ -1,27 +1,28 @@
 from functools import wraps
-from sanic.response import json
-from sanic.exceptions import abort
 
-async def get_redis_pool():
-    # Update this with your Redis connection details
-    return await aioredis.create_redis_pool('redis://localhost')
+import config
+from utils import redis_conn
+from utils.constant import REQUEST_RATE_LIMIT
+from utils.response import RateLimitError
+from utils.util import http_response
+
+
+Config = config.Config()
+RedisConn = redis_conn.RedisClient(Config.RedisUrl)
 
 def rate_limit(requests=10, seconds=60):
     def decorator(f):
         @wraps(f)
         async def decorated_function(request, *args, **kwargs):
-            redis = await get_redis_pool()
-            ip = request.ip
-            key = f"ratelimit:{ip}"
-            try:
-                count = await redis.incr(key)
-                if count == 1:
-                    await redis.expire(key, seconds)
-                if count > requests:
-                    abort(429, "Too many requests")
-                response = await f(request, *args, **kwargs)
-                return response
-            finally:
-                redis.close()
+            key = REQUEST_RATE_LIMIT.format(request.uri_template, request.ctx.real_ip)
+            count = await RedisConn.incr(key)
+
+            if count >= 1:
+                await RedisConn.expire(key, seconds)
+                
+            if count > requests:
+                return http_response(429, "Too many requests")
+            response = await f(request, *args, **kwargs)
+            return response
         return decorated_function
     return decorator
