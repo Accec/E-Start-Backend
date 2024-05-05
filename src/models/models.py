@@ -26,7 +26,7 @@ class User(Model):
     account = fields.CharField(max_length = 50, index = True, unique = True, description = "用户账号")
     password = fields.CharField(max_length = 64, description = "用户密码")
 
-    open_id = fields.CharField(max_length = 32, index = True, description = "OPENID")
+    open_id = fields.CharField(max_length = 32, index = True, unique = True, description = "OPENID")
 
     logs = fields.ReverseRelation["Log"]
     roles = fields.ManyToManyField('e-starter.Role', related_name='users', through='user_role')
@@ -39,7 +39,7 @@ class User(Model):
 
 class Role(Model):
     id = fields.IntField(pk=True, description="ID")
-    role_name = fields.CharField(max_length=100, description="角色名")
+    role_name = fields.CharField(max_length=100, unique = True, description="角色名")
 
     permissions = fields.ManyToManyField('e-starter.Permission', related_name='roles', through='role_permission')
 
@@ -51,7 +51,7 @@ class Role(Model):
 
 class Permission(Model):
     id = fields.IntField(pk=True, description="ID")
-    permission_title = fields.CharField(index = True, max_length=100, description="权限名")
+    permission_title = fields.CharField(index = True, unique = True, max_length=100, description="权限名")
 
     update_time = fields.DatetimeField(auto_now=True, description="更新时间")
     create_time = fields.DatetimeField(auto_now_add=True, description="创建时间")
