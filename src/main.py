@@ -29,7 +29,7 @@ Logging = logging.getLogger(SERVER_LOGGER)
 JwtAuth = jwt.JwtAuth(Config.JwtSecretKey)
 RedisConn = redis_conn.RedisClient(Config.RedisUrl)
 
-
+ 
 if __name__ == "__main__":
     if len(sys.argv) > 1:
         cli.cli()
