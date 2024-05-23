@@ -1,22 +1,20 @@
 import os
 from pathlib import PurePosixPath
-import importlib
 
-
-from scheduler import tasks
-
-import models
+from application import api
 
 from tortoise.contrib.sanic import register_tortoise
 
-
+import importlib
 import config
+import logging
+from utils.constant import SERVER_LOGGER
 
 
 Config = config.Config()
 
 def create_app(server):
-    TortoiseConfig = {
+    tortoise_config = {
             'connections': {
                 'default': {
                     'engine': 'tortoise.backends.mysql',
@@ -60,43 +58,56 @@ def create_app(server):
         bearer_format="JWT",
     )
     register_tortoise(
-            server, config = TortoiseConfig,
+            server, config = tortoise_config,
             generate_schemas=True
         )
 
     return server
 
-def load_task():
-    #获取tasks路径
-    tasks_dir = os.path.dirname(os.path.abspath(tasks.__file__))
-    #遍历tasks文件夹下面的所有task文件夹
-    for task_dir in os.listdir(tasks_dir):
-        #获取tasks路径下的task路径
-        task_dir = os.path.join(tasks_dir, task_dir)
-        task_dir = PurePosixPath(task_dir)
-        #确认该task路径不以__开头并且是文件夹
-        if os.path.isdir(task_dir.as_posix()) and task_dir.stem.startswith("__") == False:
-            #遍历task文件夹下面的所有文件夹
-            for task in os.listdir(task_dir):
-                print (f"[Task] - [{task_dir.stem}] is loaded")
-                #importlib.import_module(f"scheduler.tasks.{task_dir.stem}.task.py")
+def autodiscover_api():
+    logger = logging.getLogger(SERVER_LOGGER)
 
-def _get_models():
-    #定义一个空列表用来储存model的包名
-    model_list = []
-    #获取models路径
-    models_dir = os.path.dirname(os.path.abspath(models.__file__))
-    #遍历models文件夹下面的所有model文件夹
-    for model in os.listdir(models_dir):
-        #获取models路径下的model路径
-        model = os.path.join(models_dir, model)
-        model = PurePosixPath(model)
-        #为了兼容性所以采用这种方式进行获取model的命名
-        model_name = os.path.basename(model.as_posix())
-        model_name = model_name.replace(".py", "")
-        #确认model文件不以__开头
-        if os.path.isfile(model.as_posix()) and model_name.startswith("__") == False:
-            print (f"[Model] - [{model_name}] is loaded")
-            model_list.append(f"models.{model_name}")
+    api_dir = os.path.dirname(os.path.abspath(api.__file__))
+    for version in os.listdir(api_dir):
+        version_dir = os.path.join(api_dir, version)
+        version_dir = PurePosixPath(version_dir)
+        if os.path.isdir(version_dir.as_posix()) and version_dir.stem.startswith('__') == False:
+            for blueprint in os.listdir(version_dir):
+                blueprint_dir = os.path.join(version_dir, blueprint)
+                blueprint_dir = PurePosixPath(blueprint_dir)
+                if os.path.isdir(blueprint_dir.as_posix()) and blueprint_dir.stem.startswith('__') == False:
+                    for sub_router in os.listdir(blueprint_dir):
+                        sub_router_dir = os.path.join(blueprint_dir, sub_router)
+                        sub_router_dir = PurePosixPath(sub_router_dir)
+                        if os.path.isdir(sub_router_dir.as_posix()) and sub_router_dir.stem.startswith('__') == False:
+                            for file in os.listdir(sub_router_dir):
+                                if file == 'api.py':
+                                    logger.info(f"[api] - application.api.{version}.{blueprint}.{sub_router}.api is loaded")
+                                    importlib.import_module(f"application.api.{version}.{blueprint}.{sub_router}.api")
+                                    break
+                                else:
+                                    continue
 
-    return model_list
+def autodiscover_exceptions():
+    logger = logging.getLogger(SERVER_LOGGER)
+
+    api_dir = os.path.dirname(os.path.abspath(api.__file__))
+    for version in os.listdir(api_dir):
+        version_dir = os.path.join(api_dir, version)
+        version_dir = PurePosixPath(version_dir)
+        if os.path.isdir(version_dir.as_posix()) and version_dir.stem.startswith('__') == False:
+            for blueprint in os.listdir(version_dir):
+                blueprint_dir = os.path.join(version_dir, blueprint)
+                blueprint_dir = PurePosixPath(blueprint_dir)
+                if os.path.isdir(blueprint_dir.as_posix()) and blueprint_dir.stem.startswith('__') == False:
+                    for sub_router in os.listdir(blueprint_dir):
+                        sub_router_dir = os.path.join(blueprint_dir, sub_router)
+                        sub_router_dir = PurePosixPath(sub_router_dir)
+                        if os.path.isdir(sub_router_dir.as_posix()) and sub_router_dir.stem.startswith('__') == False:
+                            for file in os.listdir(sub_router_dir):
+                                if file == 'handler.py':
+                                    logger.info(f"[exceptions] - application.api.{version}.{blueprint}.{sub_router}.handler is loaded")
+                                    importlib.import_module(f"application.api.{version}.{blueprint}.{sub_router}.handler")
+                                    break
+                                else:
+                                    continue

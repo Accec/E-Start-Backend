@@ -4,7 +4,7 @@ from typing import Union, Optional
 from utils.response import Successfully, ArgsInvalidError, RateLimitError, RequestError, UserExistError
 from sanic_ext.exceptions import ValidationError
 
-class RegisterPayloads(BaseModel):
+class PostRegisterBody(BaseModel):
     account: str = Field(min_length=5, max_length=20)
     password: str = Field(min_length=8, max_length=20)
     verify_code: Optional[str] = Field(default=None, min_length=6, max_length=6)
@@ -21,9 +21,7 @@ class RegisterPayloads(BaseModel):
     def check_passowrd(cls, value):
         if not re.match(r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,15}$', value):
             raise ValidationError(message="Password must be 8-15 characters long, include at least one uppercase letter, one lowercase letter, one number, and one special character.")
-
         return value
-
 
 class UserExistResponse(BaseModel):
     code: int = Field(default=UserExistError.code)

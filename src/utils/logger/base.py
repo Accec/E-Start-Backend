@@ -71,7 +71,7 @@ def setupLogger(logName, logsPath, when, level):
  
     # 创建日志输出格式
     logger_formatter = logging.Formatter(
-        "[%(asctime)s] [%(process)d] [%(levelname)s] - %(module)s.%(funcName)s (%(filename)s:%(lineno)d) - %(message)s")
+        "[%(asctime)s] [%(process)d] [%(levelname)s] - %(name)s.%(module)s.%(funcName)s (%(filename)s:%(lineno)d) - %(message)s")
 
     streamHandler = logging.StreamHandler(sys.stdout)
  
@@ -90,12 +90,13 @@ def setupLogger(logName, logsPath, when, level):
  
  
 if __name__ == "__main__":
-    logger = setupLogger("test", "logs", "M")
+    setupLogger("test", "backend/src/logs", "M", 2)
     n = 1
+    a = logging.getLogger("test")
     while True:
-        logger.debug(f"this is info message")
-        logger.info(f"this is info message")
-        logger.warning(f"this is info message")
-        logger.error(f"this is info message")
+        a.debug(f"this is debug message")
+        a.info(f"this is info message")
+        a.warning(f"this is warning message")
+        a.error(f"this is error message")
         time.sleep(1)
         n += 1

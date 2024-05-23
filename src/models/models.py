@@ -24,7 +24,7 @@ class User(Model):
     id = fields.BigIntField(pk = True, description = "ID")
 
     account = fields.CharField(max_length = 50, index = True, unique = True, description = "用户账号")
-    password = fields.CharField(max_length = 64, description = "用户密码")
+    password = fields.CharField(max_length = 32, description = "用户密码")
 
     open_id = fields.CharField(max_length = 32, index = True, unique = True, description = "OPENID")
 
@@ -58,3 +58,15 @@ class Permission(Model):
 
     class Meta:
         table = "permission"
+
+class Endpoint(Model):
+    id = fields.IntField(pk=True, description="ID")
+    endpoint = fields.CharField(index = True, unique = True, max_length=255, description="终端名")
+
+    permissions = fields.ManyToManyField('e-starter.Permission', related_name='endpoints', through='endpoint_permission')
+
+    update_time = fields.DatetimeField(auto_now=True, description="更新时间")
+    create_time = fields.DatetimeField(auto_now_add=True, description="创建时间")
+
+    class Meta:
+        table = "endpoint"

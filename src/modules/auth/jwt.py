@@ -3,15 +3,19 @@ from functools import wraps
 
 import datetime
 
-from utils.constant import LOG_LEVEL_HIGH
+from utils.constant import LOG_LEVEL_HIGH, USER_PERMISSIONS_KEY, ENDPOINT_PERMISSIONS_KEY
 from utils.response import AuthorizedError, TokenError
 from utils.util import http_response
 
-from models import User, Permission, Log
+import config
+from utils import redis_conn
+from models import User, Permission, Log, Endpoint
 
-
+import ujson
 import asyncio
 
+Config = config.Config()
+RedisConn = redis_conn.RedisClient(Config.RedisUrl)
 
 class JwtAuth:
     _instance = None
@@ -41,29 +45,58 @@ class JwtAuth:
         except Exception as e:
             print (e.__str__())
             return False
+        
+    async def get_endpoint_permissions(self, endpoint):
+        permissions_key = ENDPOINT_PERMISSIONS_KEY.format(endpoint)
+        permissions = await RedisConn.get(permissions_key)
+        if permissions is not None:
+            return set(ujson.loads(permissions))
 
-    def authorized(self, *permissions):
+        # 如果缓存中没有，从数据库查询
+        endpoint = await Endpoint.get(endpoint=endpoint)
+        permissions = await endpoint.permissions.all()
+
+        endpoint_permissions = [permission.permission_title for permission in permissions]
+        # 将结果缓存，设置过期时间为1小时
+        await RedisConn.set(permissions_key, ujson.dumps(endpoint_permissions), expire=3600)
+
+        return endpoint_permissions
+        
+    async def get_user_permissions(self, user_id):
+        permissions_key = USER_PERMISSIONS_KEY.format(user_id)
+        permissions = await RedisConn.get(permissions_key)
+        if permissions is not None:
+            return set(ujson.loads(permissions))
+
+        # 如果缓存中没有，从数据库查询
+        user = await User.get(id=user_id).prefetch_related("roles")
+        roles = await user.roles.all()
+
+        role_permissions = await asyncio.gather(*(role.permissions.all() for role in roles))
+        user_permissions = {perm.permission_title for perms in role_permissions for perm in perms}
+
+        # 将结果缓存，设置过期时间为1小时
+        await RedisConn.set(permissions_key, ujson.dumps(list(user_permissions)), expire=3600)
+
+        return user_permissions
+
+    def permissions_authorized(self):
         def decorator(f):
             @wraps(f)
             async def decorated_function(request, *args, **kwargs):
                 jwt_token = request.token
+                endpoint = request.uri_template
                 is_authorized = self.decode_jwt(jwt_token)
 
                 if is_authorized:
+                    permissions = self.get_endpoint_permissions(endpoint)
                     request.ctx.user = is_authorized
                     if permissions:
-                        user = await User.get(id=is_authorized["user_id"]).prefetch_related("roles")
-                        roles = await user.roles.all()  # 获取关联的角色列表
-                        # 获取用户所有角色的权限
-                        user_permissions = set()
-                        for role in roles:
-                            role_permissions = await role.permissions.all()
-                            for perm in role_permissions:
-                                user_permissions.add(perm.permission_title)
-
+                        user_id = request.ctx.user['user_id']
+                        user_permissions = await self.get_user_permissions(user_id)
                         # 检查用户是否拥有所需的所有权限
                         if not all(perm in user_permissions for perm in permissions):
-                            new_log = Log(user = user, api = request.uri_template, action = "Privilege escalation", ip = request.ctx.real_ip, ua = request.ctx.ua, level = LOG_LEVEL_HIGH)
+                            new_log = Log(user = user_id, api = request.uri_template, action = "Privilege escalation", ip = request.ctx.real_ip, ua = request.ctx.ua, level = LOG_LEVEL_HIGH)
                             await new_log.save()
                             return http_response(AuthorizedError.code, AuthorizedError.msg, status=403)
                                             

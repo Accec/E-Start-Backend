@@ -1,36 +1,53 @@
-import asyncio
 from sanic.app import Sanic
-
-from utils.create_app import create_app, load_task
 import config
-from utils import logger
+from utils.logger import Logger
+from utils.create_app import create_app
+
+
+from utils.constant import API_LOGGER, TASK_LOGGER, JOB_LOGGER, SERVER_LOGGER, SCHEDULER_LOGGER
+
+Config = config.Config()
+Server = create_app(Sanic("E-Starter"))
+
+Logger.setupLogger(SERVER_LOGGER)
+Logger.setupLogger(SCHEDULER_LOGGER)
+Logger.setupLogger(API_LOGGER)
+Logger.setupLogger(TASK_LOGGER)
+Logger.setupLogger(JOB_LOGGER)
+
+import asyncio
+import sys
+import logging
+
 import scheduler
 
 from modules.auth import jwt
 from utils import redis_conn
+from utils import cli
 
-Config = config.Config()
+Logging = logging.getLogger(SERVER_LOGGER)
 JwtAuth = jwt.JwtAuth(Config.JwtSecretKey)
 RedisConn = redis_conn.RedisClient(Config.RedisUrl)
-Server = create_app(Sanic("E-Starter"))
 
-Logging = logger.Logger()
-Scheduler = scheduler.Scheduler()
+
+if __name__ == "__main__":
+    if len(sys.argv) > 1:
+        cli.cli()
+
+Scheduler = scheduler.Scheduler(RedisConn)
 
 from utils import router
 
-@Server.listener("before_server_start")
-async def strart_scheduler(app, loop):
+
+@Server.main_process_start
+async def start_scheduler(app, loop):
     Logging.info("Start the service")
-    await Scheduler.init_loop()
-    load_task()
+    Scheduler.run_by_thread()
 
-Server.add_task(Scheduler.start_jobs())
-
-@Server.listener("before_server_stop")
+@Server.main_process_stop
 async def stop_scheduler(app, loop):
     await asyncio.sleep(0.1)
-    await Scheduler.cancel_jobs()
+    await Scheduler.shutdown()
     await asyncio.get_event_loop().shutdown_asyncgens()
 
     Logging.info("Stop the service")
@@ -39,8 +56,9 @@ from middleware.request_handling.request_handling import request_handling
 
 Server.middleware(request_handling)
 
-Server.blueprint(router.UserBlueprint)
+for bp in router.Blueprints:
+    Logging.info(f"[Blueprint] - [{bp.name}] is loaded")
+    Server.blueprint(bp)
 
 if __name__ == "__main__":
-
-    Server.run(host = Config.SanicHost, port = Config.SanicPort, debug = Config.DeBug, access_log = False)
+    Server.run(host = Config.SanicHost, port = Config.SanicPort, dev = Config.DeBug, auto_reload=Config.DeBug, debug = Config.DeBug, access_log = False)

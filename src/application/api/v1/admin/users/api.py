@@ -1,4 +1,4 @@
-from utils.router import UserBlueprint
+from utils.router import AdminBlueprint
 from utils.util import http_response
 from utils.response import Successfully, ArgsInvalidError, RateLimitError
 
@@ -14,9 +14,9 @@ from modules.auth import jwt
 
 JwtAuth = jwt.JwtAuth()
 
-@UserBlueprint.post("/dashboard")
-@openapi.summary("Dashboard")
-@openapi.description("dashboard")
+@AdminBlueprint.post("/users")
+@openapi.summary("users")
+@openapi.description("users")
 @openapi.secured("token")
 @openapi.response(status=200, content={"application/json": serializers.SuccessfullyResponse.model_json_schema()}, description="Successfully")
 @openapi.response(status=400, content={"application/json": serializers.ArgsInvalidResponse.model_json_schema()}, description="Args invalid")
@@ -25,6 +25,6 @@ JwtAuth = jwt.JwtAuth()
 @openapi.response(status=500, content={"application/json": serializers.RequestErrorResponse.model_json_schema()}, description="Request error")
 @openapi.response(status=429, content={"application/json": serializers.RateLimitResponse.model_json_schema()}, description="Rate limit")
 @JwtAuth.permissions_authorized()
-async def user_get_dashboard(request: Request):
+async def admin_get_dashboard(request: Request):
     
     return http_response(status = 200, code = Successfully.code, msg = Successfully.msg)
