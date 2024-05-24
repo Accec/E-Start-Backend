@@ -30,7 +30,7 @@ def create_app(server):
                 },
             },
             'apps': {
-                'e-starter': {
+                Config.APP: {
                     'models': ["models"],
                     'default_connection': 'default',
                 }

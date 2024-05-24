@@ -32,7 +32,7 @@ def cli():
                 },
             },
             'apps': {
-                'e-starter': {
+                Config.APP: {
                     'models': ["models"],
                     'default_connection': 'default',
                 }
@@ -89,6 +89,9 @@ def create_admin(username, password):
 
         new_user = User(account=username, password=hashed_password, open_id=open_id)
         await new_user.save()
+
+        role = await Role.get(role_name="Admin")
+        await new_user.roles.add(role)
 
         click.echo(f"Admin created [account: {username} - password: {password}].")
 

@@ -7,7 +7,7 @@ from utils.create_app import create_app
 from utils.constant import API_LOGGER, TASK_LOGGER, JOB_LOGGER, SERVER_LOGGER, SCHEDULER_LOGGER
 
 Config = config.Config()
-Server = create_app(Sanic("E-Starter"))
+Server = create_app(Sanic(Config.APP))
 
 Logger.setupLogger(SERVER_LOGGER)
 Logger.setupLogger(SCHEDULER_LOGGER)

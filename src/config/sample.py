@@ -1,6 +1,7 @@
 from config.base import *
 
 #环境设置
+APP = "E-Starter"
 DeBug = True
 Pip = "pip"
 RelativePath = True
