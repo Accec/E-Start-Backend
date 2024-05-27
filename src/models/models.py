@@ -61,7 +61,8 @@ class Permission(Model):
 
 class Endpoint(Model):
     id = fields.IntField(pk=True, description="ID")
-    endpoint = fields.CharField(index = True, unique = True, max_length=255, description="终端名")
+    endpoint = fields.CharField(index = True, max_length=255, description="终端名")
+    method = fields.CharField(max_length=10, description="请求方式")
 
     permissions = fields.ManyToManyField('e-starter.Permission', related_name='endpoints', through='endpoint_permission')
 
@@ -70,3 +71,4 @@ class Endpoint(Model):
 
     class Meta:
         table = "endpoint"
+        unique_together = ("endpoint", "method")

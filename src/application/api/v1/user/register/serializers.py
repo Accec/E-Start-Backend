@@ -26,24 +26,24 @@ class PostRegisterBody(BaseModel):
 class UserExistResponse(BaseModel):
     code: int = Field(default=UserExistError.code)
     msg: str = Field(default=UserExistError.msg)
-    result: Optional[Union[dict, list, str]] = Field(default=None)
+    results: Optional[Union[dict, list, str]] = Field(default=None)
 
 class SuccessfullyResponse(BaseModel):
     code: int = Field(default=Successfully.code)
     msg: str = Field(default=Successfully.msg)
-    result: Optional[Union[dict, list, str]] = Field(default=None)
+    results: Optional[Union[dict, list, str]] = Field(default=None)
 
 class RequestErrorResponse(BaseModel):
     code: int = Field(default=RequestError.code)
     msg: str = Field(default=RequestError.msg)
-    result: Optional[Union[dict, list, str]] = Field(default=None)
+    results: Optional[Union[dict, list, str]] = Field(default=None)
 
 class ArgsInvalidResponse(BaseModel):
     code: int = Field(default=ArgsInvalidError.code)
     msg: str = Field(default=ArgsInvalidError.msg)
-    result: Optional[Union[dict, list, str]] = Field(default=None)
+    results: Optional[Union[dict, list, str]] = Field(default=None)
 
 class RateLimitResponse(BaseModel):
     code: int = Field(default=RateLimitError.code)
     msg: str = Field(default=RateLimitError.msg)
-    result: Optional[Union[dict, list, str]] = Field(default=None)
+    results: Optional[Union[dict, list, str]] = Field(default=None)

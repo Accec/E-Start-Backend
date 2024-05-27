@@ -3,6 +3,8 @@ from functools import wraps
 
 import datetime
 
+from sanic import router
+
 from utils.constant import LOG_LEVEL_HIGH, USER_PERMISSIONS_KEY, ENDPOINT_PERMISSIONS_KEY
 from utils.response import AuthorizedError, TokenError
 from utils.util import http_response
@@ -46,6 +48,11 @@ class JwtAuth:
             print (e.__str__())
             return False
         
+    async def save_endpoint(self, endpoint):
+        endpoint = await Endpoint.get_or_none(endpoint=endpoint)
+        if not endpoint:
+            endpoint = await Endpoint.create(endpoint=endpoint)
+
     async def get_endpoint_permissions(self, endpoint):
         permissions_key = ENDPOINT_PERMISSIONS_KEY.format(endpoint)
         permissions = await RedisConn.get(permissions_key)
@@ -53,12 +60,14 @@ class JwtAuth:
             return set(ujson.loads(permissions))
 
         # 如果缓存中没有，从数据库查询
-        endpoint = await Endpoint.get(endpoint=endpoint)
+        endpoint = await Endpoint.get_or_none(endpoint=endpoint)
+        if not endpoint:
+            return set()
         permissions = await endpoint.permissions.all()
 
         endpoint_permissions = [permission.permission_title for permission in permissions]
         # 将结果缓存，设置过期时间为1小时
-        await RedisConn.set(permissions_key, ujson.dumps(endpoint_permissions), expire=3600)
+        await RedisConn.set(permissions_key, ujson.dumps(endpoint_permissions), ex=3600)
 
         return endpoint_permissions
         
@@ -74,27 +83,35 @@ class JwtAuth:
 
         role_permissions = await asyncio.gather(*(role.permissions.all() for role in roles))
         user_permissions = {perm.permission_title for perms in role_permissions for perm in perms}
+        if not user_permissions:
+            return set()
 
         # 将结果缓存，设置过期时间为1小时
-        await RedisConn.set(permissions_key, ujson.dumps(list(user_permissions)), expire=3600)
+        await RedisConn.set(permissions_key, ujson.dumps(list(user_permissions)), ex=3600)
 
         return user_permissions
 
-    def permissions_authorized(self):
+    def permissions_authorized(self, url=None):
+        print (url)
         def decorator(f):
             @wraps(f)
             async def decorated_function(request, *args, **kwargs):
+                
                 jwt_token = request.token
                 endpoint = request.uri_template
+                
                 is_authorized = self.decode_jwt(jwt_token)
 
                 if is_authorized:
-                    permissions = self.get_endpoint_permissions(endpoint)
+
                     request.ctx.user = is_authorized
+                    
+                    permissions = await self.get_endpoint_permissions(endpoint)
+                    
                     if permissions:
                         user_id = request.ctx.user['user_id']
                         user_permissions = await self.get_user_permissions(user_id)
-                        # 检查用户是否拥有所需的所有权限
+
                         if not all(perm in user_permissions for perm in permissions):
                             new_log = Log(user = user_id, api = request.uri_template, action = "Privilege escalation", ip = request.ctx.real_ip, ua = request.ctx.ua, level = LOG_LEVEL_HIGH)
                             await new_log.save()

@@ -2,11 +2,14 @@ from utils.router import UserBlueprint
 from utils.util import http_response
 from utils.response import Successfully, ArgsInvalidError, RateLimitError, AccountOrPasswordInvalid
 from utils.constant import LOG_LEVEL_HIGH, LOG_LEVEL_MIDIUM
+from utils.constant import API_LOGGER
 
 from sanic.request import Request
 from sanic_ext import validate, openapi
 
 from . import serializers
+
+import logging
 
 import config
 from models import User, Log, Role
@@ -17,6 +20,7 @@ from modules.auth import jwt
 
 Config = config.Config()
 JwtAuth = jwt.JwtAuth()
+Logger = logging.getLogger(API_LOGGER)
 
 @UserBlueprint.post("/login")
 @openapi.summary("User Login")

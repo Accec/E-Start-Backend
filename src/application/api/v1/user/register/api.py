@@ -1,5 +1,6 @@
 from utils.response import Successfully, RequestError, UserExistError
 from utils.constant import LOG_LEVEL_MIDIUM, ROLE_USER
+from utils.constant import API_LOGGER
 from utils.router import UserBlueprint
 from utils.util import http_response
 from sanic_ext import validate, openapi
@@ -13,6 +14,10 @@ from models import User, Log, Role
 from modules.rate_limit import rate_limit
 from modules.encryptor import hash_password, generate_openid
 
+import logging
+
+
+Logger = logging.getLogger(API_LOGGER)
 
 @UserBlueprint.post("/register")
 @openapi.summary("Register")
@@ -38,6 +43,7 @@ async def user_post_register(request: Request, body: serializers.PostRegisterBod
     role = await Role.get(role_name=ROLE_USER)
     await new_user.roles.add(role)
     # create log
+    Logger.info(f"[User] - [{body.account}] Register")
     new_log = Log(user = new_user, api = request.uri_template, action = "Register successfully!", ip = request.ctx.real_ip, ua = request.ctx.ua, level = LOG_LEVEL_MIDIUM)
     await new_log.save()
     return http_response(Successfully.code, Successfully.msg, status=201)

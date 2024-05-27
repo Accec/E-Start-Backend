@@ -28,6 +28,7 @@ class Scheduler:
         self.logger.info("Scheduler is working now...")
         self.jobs = []
         self.tasks = {}
+        self.job_name_set = set()
         self.redis_conn:aioredis.StrictRedis = redis_conn
 
         self.semaphore = asyncio.Semaphore(10)  # Limit to 10 concurrent tasks
@@ -39,7 +40,7 @@ class Scheduler:
         self._job_status_pending = 0
         self._job_status_running = 1
 
-        self._job_expire = 300
+        self._job_expire = 1 * 1000 * 300
 
         self._task_queue_key = 'task:queue'
         self._task_key = 'task:{}'
@@ -55,9 +56,9 @@ class Scheduler:
         self._task_status_working = 1
         self._task_status_done = 2
 
-        self._task_expire = 300
+        self._task_expire = 1 * 1000 * 300
 
-        self._factory = {}
+        #self._factory = {}
 
         self.shutdown_flag = False
         
@@ -65,18 +66,34 @@ class Scheduler:
     def logging(self) -> logging.Logger:
         return self.logger
     
-    def run_by_thread(self):
-        thread = threading.Thread(target=self.init)
-        thread.start()
-
-    def init(self):
-        self.init_loop()
+    async def run_by_worker(self):
+        await self.init_loop_by_async()
         self.load_tasks()
         self.load_jobs()
-        self.start_jobs()
+        await self.start_jobs_by_async()
     
-    def init_loop(self):
+    def run_by_thread(self):
+        thread = threading.Thread(target=self.init_by_thread)
+        thread.start()
+
+    def init_by_thread(self):
+        self.init_loop_by_thread()
+        self.load_tasks()
+        self.load_jobs()
+        self.start_jobs_by_thread()
+    
+    def init_loop_by_thread(self):
         self.asyncio_loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(self.asyncio_loop)
+
+    async def run_by_async(self):
+        await self.init_loop_by_async()
+        self.load_tasks()
+        self.load_jobs()
+        await self.start_jobs_by_async()
+
+    async def init_loop_by_async(self):
+        self.asyncio_loop = asyncio.get_event_loop()
         asyncio.set_event_loop(self.asyncio_loop)
 
     def load_tasks(self):
@@ -111,29 +128,31 @@ class Scheduler:
             finally:
                 end_time = time.time()
                 elapsed_time = end_time - start_time
-                self.del_instance_from_factory(task_id)
                 self.logger.info(f"[Task] - [{task_name}] - [{task_id}] - completed in {elapsed_time} seconds")
 
         self.asyncio_loop.create_task(task_wrapper())
 
 
-    def add_instance_to_factory(self, task_id, key, instance):
-        if task_id not in self._factory:
-            self._factory[task_id] = {}
-        self._factory[task_id][key] = instance
+    #def add_instance_to_factory(self, task_id, key, instance):
+    #    if task_id not in self._factory:
+    #        self._factory[task_id] = {}
+    #    self._factory[task_id][key] = instance
 
-    def get_instance_from_factory(self, task_id, key):
-        if task_id not in self._factory:
-            return None
-        return self._factory[task_id].get(key, None)
+    #def get_instance_from_factory(self, task_id, key):
+    #    if task_id not in self._factory:
+    #        return None
+    #    return self._factory[task_id].get(key, None)
     
-    def del_instance_from_factory(self, task_id):
-        if task_id in self._factory:
-            del self._factory[task_id]
-            return True
-        return False
+    #def del_instance_from_factory(self, task_id):
+    #    if task_id in self._factory:
+    #        del self._factory[task_id]
+    #        return True
+    #    return False
 
     def add_task(self, task):
+        if task in self.tasks:
+            raise Exception(f"Task {task} already exists")
+        
         def decorator(func):
             self.tasks[task] = func
             return func
@@ -148,7 +167,7 @@ class Scheduler:
         task_id = str(uuid.uuid1())
         task = ujson.dumps({"task_id": task_id, "task_name": task, "task_args": extra})
         await self.redis_conn.lpush(self._task_queue_key, task)
-        await self.redis_conn.hset(self._task_key.format(task_id), self._status_key, self._task_status_pending)
+        await self.set_task(task_id, key=self._status_key, value=self._task_status_pending)
         return task_id
 
     async def start_task_handler(self):
@@ -156,41 +175,45 @@ class Scheduler:
         while not self.shutdown_flag:
             async with locker.lock():
                 _, task = await self.redis_conn.brpop(self._task_queue_key, 0)
-                task = ujson.loads(task.decode('utf-8'))
+                task = ujson.loads(task)
 
                 task_id = task["task_id"]
                 task_name = task["task_name"]
                 task_args = task["task_args"]
                 task_key = self._task_key.format(task_id)
                 
-                await self.redis_conn.hset(task_key, self._status_key, self._task_status_working)
+                await self.set_task(task_key, key=self._status_key, value=self._task_status_working)
+                await self.set_task(task_key, key=self._result_key, value="None")
+
                 try:
-                    result = await self.safe_execute(self.tasks[task_name](**task_args), task_name, task_id)
+                    result = await self.safe_execute(self.tasks[task_name], task_name, task_id, **task_args)
                 except Exception as e:
-                    await self.set_tasks(task_key, key=self._status_key, value=self._task_status_error)
-                    await self.set_tasks(task_key, key=self._result_key, value=e.__str__())
+                    await self.set_task(task_name, key=self._status_key, value=self._task_status_error)
+                    await self.set_task(task_name, key=self._result_key, value=e.__str__())
                 else:
-                    await self.set_tasks(task_key, key=self._status_key, value=self._task_status_done)
-                    await self.set_tasks(task_key, key=self._result_key, value=result)
-    
+                    await self.set_task(task_name, key=self._status_key, value=self._task_status_done)
+                    await self.set_task(task_name, key=self._result_key, value=result or "None")
+
     def add_job(self, job_name, default_interval):
+        if job_name in self.job_name_set:
+            raise Exception(f"Job [{job_name}] already exists")
+        self.job_name_set.add(job_name)
         def decorator(func):
             @wraps(func)
             async def wrapper(*args, **kwargs):
                 while not self.shutdown_flag:
+                    task_id = str(uuid.uuid1())
                     job_config_key = self._job_key.format(job_name, self._job_identifier)
-                    
                     job_config = await self.redis_conn.hgetall(job_config_key)
                     if job_config:
-                        interval = int(job_config.get(self._interval.encode(), default_interval))
-                        status = int(job_config.get(self._status.encode(), self._job_status_pending))
+                        await self.redis_conn.expire(job_config_key, self._job_expire)
+                        interval = int(job_config.get(self._interval, default_interval))
+                        status = int(job_config.get(self._status, self._job_status_pending))
                     else:
-                        self.logger.info(f"Job [{job_name}] is created - status: {self._job_status_pending}")
-                        job_config = {
-                                        self._interval: default_interval,
-                                        self._status: self._job_status_pending
-                                     }
-                        await self.redis_conn.hmset(job_config_key, job_config)
+                        self.logger.info(f"Job [{job_name}] is created - status: {self._job_status_running}")
+                        
+                        await self.set_job(job_name, self._interval,  default_interval)
+                        await self.set_job(job_name, self._status,    self._job_status_running)
                         continue
 
                     if status == self._job_status_pending:
@@ -198,7 +221,7 @@ class Scheduler:
                         await asyncio.sleep(interval)
                         continue
 
-                    await self.safe_execute(func, *args, **kwargs)
+                    await self.safe_execute(func, job_name, task_id, *args, **kwargs)
                     await asyncio.sleep(interval)
 
             self.jobs.append(self.asyncio_loop.create_task(wrapper()))
@@ -216,35 +239,53 @@ class Scheduler:
                 return
         return wrapper
         
-    def start_jobs(self):
+    def start_jobs_by_thread(self):
         self.jobs.append(self.asyncio_loop.create_task(self.start_task_handler()))
         self.asyncio_loop.run_until_complete(asyncio.gather(*self.jobs))
 
-    async def get_jobs(self, job_name="*"):
-        job_config_key = self._job_key.format(job_name, self._job_identifier)
-        job_config = await self.redis_conn.hgetall(job_config_key)
-        return {key.decode('utf-8'): value.decode('utf-8') for key, value in job_config.items()}
+    async def start_jobs_by_async(self):
+        self.jobs.append(self.asyncio_loop.create_task(self.start_task_handler()))
+        await asyncio.gather(*self.jobs)
 
-    async def set_jobs(self, job_name, **kargs):
+    async def get_jobs(self):
+        all_jobs = {}
+        for job_name in self.job_name_set:
+            job_config_key = self._job_key.format(job_name, self._job_identifier)
+            job_config = await self.redis_conn.hgetall(job_config_key)
+            all_jobs[job_name] = {key: value for key, value in job_config.items()}
+        return all_jobs
+
+    async def set_job(self, job_name, key=None, value=None, **kwargs):
         job_config_key = self._job_key.format(job_name, self._job_identifier)
         try:
-            await self.redis_conn.hset(job_config_key, **kargs)
-            await self.redis_conn.expire(job_config_key, 300, gt=True)
+            if not key and not value:
+                for key, value in kwargs.items():
+                    await self.redis_conn.hset(job_config_key, key, value)
+            else:
+                await self.redis_conn.hset(job_config_key, key, value)
+            await self.redis_conn.expire(job_config_key, self._job_expire)
+            return True
         except Exception as e:
             self.logger.error(f"[Job] - Setting job config error: {e}")
-            return None
+            return False
 
-    async def get_tasks(self, task_name=None):
-        if task_name is None:
-            return self.tasks
-        else:
-            return self.tasks.get(task_name, None)
+    async def get_tasks(self):
+        hset_tasks = {}
+        tasks = await self.redis_conn.lrange(self._task_queue_key, 0, -1)
+        tasks = [ujson.loads(task) for task in tasks]            # 获取哈希集中的任务
+        
+        for task in tasks:
+            task_key = self._task_key.format(task['task_id'])
+            task_data = await self.redis_conn.hgetall(task_key)
+            hset_tasks['task_key'] = {key: value for key, value in task_data.items()}
 
-    async def set_tasks(self, task_name, **kargs):
-        job_config_key = self._task_key.format(task_name, self._job_identifier)
+        return hset_tasks
+
+    async def set_task(self, task_id, **kargs):
+        task_key = self._task_key.format(task_id)
         try:
-            await self.redis_conn.hset(job_config_key, **kargs)
-            await self.redis_conn.expire(job_config_key, 300, gt=True)
+            await self.redis_conn.hset(task_key, **kargs)
+            await self.redis_conn.expire(task_key, self._task_expire)
         except Exception as e:
             self.logger.error(f"[Task] - Setting Task config error: {e}")
             return None

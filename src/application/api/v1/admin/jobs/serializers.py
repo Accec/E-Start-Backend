@@ -1,11 +1,29 @@
 from pydantic import BaseModel, Field
-from typing import Union, Optional
+from typing import Union, Optional, Dict
 from utils.response import Successfully, ArgsInvalidError, RateLimitError, RequestError, TokenError, AuthorizedError
 
-class SuccessfullyResponse(BaseModel):
+class JobConfig(BaseModel):
+    interval: int
+    status: int
+
+class Job(BaseModel):
+    jobs: Dict[str, JobConfig]
+
+class AdminPutJobsBody(BaseModel):
+    job_name: str = Field()
+    interval: int = Field()
+    status: int = Field()
+
+class AdminGetJobsSuccessfullyResponse(BaseModel):
     code: int = Field(default=Successfully.code)
     msg: str = Field(default=Successfully.msg)
-    result: Optional[Union[dict, list, str]] = Field(default=None)
+    result: Optional[Dict[str, JobConfig]] = Field(default=None)
+
+class AdminPutJobsSuccessfullyResponse(BaseModel):
+    code: int = Field(default=Successfully.code)
+    msg: str = Field(default=Successfully.msg)
+    result: Optional[dict] = Field(default=None)
+
 
 class RequestErrorResponse(BaseModel):
     code: int = Field(default=RequestError.code)

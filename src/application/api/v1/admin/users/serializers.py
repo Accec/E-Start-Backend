@@ -6,6 +6,8 @@ class SuccessfullyResponse(BaseModel):
     code: int = Field(default=Successfully.code)
     msg: str = Field(default=Successfully.msg)
     result: Optional[Union[dict, list, str]] = Field(default=None)
+    total_items: int
+    total_pages: int
 
 class RequestErrorResponse(BaseModel):
     code: int = Field(default=RequestError.code)

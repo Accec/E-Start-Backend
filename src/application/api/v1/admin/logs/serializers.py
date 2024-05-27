@@ -1,21 +1,33 @@
 from pydantic import BaseModel, Field, field_validator
 import datetime
-from typing import Union, Optional
+from typing import Union, Optional, List
 from utils.response import Successfully, ArgsInvalidError, RateLimitError, RequestError, TokenError, AuthorizedError
 
-
-
-class AdminGetEndpointsQuery(BaseModel):
-    id: int = Field(default=None)
-    endpoint: str  = Field(default=None)
-    method: str = Field(default=None)
-    page: int = Field(default=None)
-    page_size: int = Field(default=None)
-
-class AdminGetEndpointsModel(BaseModel):
+class AdminGetLogsQuery(BaseModel):
     id: Optional[int] = None
-    endpoint: Optional[int] = None
-    method: Optional[str] = None
+    user_id: Optional[int] = None
+    api: Optional[str] = None
+    action: Optional[str] = None
+    ip: Optional[str] = None
+    ua: Optional[str] = None
+    level: Optional[int] = None
+    update_time: Optional[str] = None
+    create_time: Optional[str] = None
+    page: int = 1
+    page_size: int = 20
+
+    @field_validator('create_time', 'update_time', mode="before")
+    def format_datetime_to_str(cls, value: datetime.datetime):
+        return value.strftime("%Y-%m-%d %H:%M:%S") if value else None
+
+class AdminGetLogModel(BaseModel):
+    id: Optional[int] = None
+    user_id: Optional[int] = None
+    api: Optional[str] = None
+    action: Optional[str] = None
+    ip: Optional[str] = None
+    ua: Optional[str] = None
+    level: Optional[int] = None
     update_time: Optional[str] = None
     create_time: Optional[str] = None
 
@@ -23,16 +35,15 @@ class AdminGetEndpointsModel(BaseModel):
     def format_datetime_to_str(cls, value: datetime.datetime):
         return value.strftime("%Y-%m-%d %H:%M:%S") if value else None
 
+
 class PaginatorSettings(BaseModel):
     page: int = Field(default=1)
     page_size: int = Field(default=20)
-    
 
-
-class AdminGetEndpointsSuccessfullyResponse(BaseModel):
+class AdminGetLogsSuccessfullyResponse(BaseModel):
     code: int = Field(default=Successfully.code)
     msg: str = Field(default=Successfully.msg)
-    result: Optional[Union[dict, list, str]] = Field(default=None)
+    result: Optional[List[AdminGetLogModel]] = Field(default=None)
     total_items: int
     total_pages: int
 

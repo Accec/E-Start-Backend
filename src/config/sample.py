@@ -7,11 +7,12 @@ Pip = "pip"
 RelativePath = True
 UploadsPath = "uploads"
 LogsPath = "logs"
+JwtSecretKey = ""                   #JWT密钥, 请确保该密钥不会有泄露风险
 #Sanic设置
 SanicHost = "localhost"
 SanicPort = 8000
 #Nginx配置
-ForwardedSecret = ""
+ForwardedSecret = ""                #Nginx转发密钥配置, 请确保该密钥不会有泄露风险
 #Mysql设置
 MysqlHost = "localhost"
 MysqlPort = 3306

@@ -1,9 +1,10 @@
-
-from utils.logger import Logger
+import logging
+from utils.constant import API_LOGGER
 from utils.error import RequestException
+from sanic import request
 
-Logging = Logger()
-async def request_handling(request):
+Logging = logging.getLogger(API_LOGGER)
+async def request_handling(request: request.Request):
     
     request_id = request.id
     request.ctx.request_id = request_id
@@ -11,6 +12,7 @@ async def request_handling(request):
     request.ctx.ua = request.headers.get('user-agent')
 
     request_params = {}
+    request.uri_template
 
     try:
         request_method = request.method
@@ -24,7 +26,7 @@ async def request_handling(request):
                 request_params = {key: request.form.get(key) for key in request.form.keys()}
 
         if request_params != {}:
-            Logging.info(f"request_id[{request_id}]-client_ip[{request.ip}]-url[{request.url}]-body[{request_params}]")
+            Logging.info(f"request_id[{request_id}]-client_ip[{request.ctx.real_ip}]-url[{request.url}]-body[{request_params}]")
         
 
     except Exception as e:

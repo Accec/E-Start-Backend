@@ -1,9 +1,12 @@
 import os
 from pathlib import PurePosixPath
+import sanic
 
 from application import api
 
 from tortoise.contrib.sanic import register_tortoise
+
+from models import Log
 
 import importlib
 import config
@@ -13,7 +16,8 @@ from utils.constant import SERVER_LOGGER
 
 Config = config.Config()
 
-def create_app(server):
+def create_app():
+    server = sanic.Sanic(Config.APP)
     tortoise_config = {
             'connections': {
                 'default': {
@@ -63,6 +67,9 @@ def create_app(server):
         )
 
     return server
+
+def init_endpoint(server: sanic.Sanic):
+    server.get_app().router
 
 def autodiscover_api():
     logger = logging.getLogger(SERVER_LOGGER)
