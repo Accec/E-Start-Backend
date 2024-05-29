@@ -33,16 +33,24 @@ JwtAuth = jwt.JwtAuth()
 @validate(query=serializers.AdminGetEndpointsQuery)
 @JwtAuth.permissions_authorized()
 async def admin_get_endpoints(request: Request, query: serializers.AdminGetEndpointsQuery):
-    endpoints_model = serializers.AdminGetEndpointsModel().model_validate(query, from_attributes=True)
-    endpoints_model = endpoints_model.model_dump(exclude_none = True)
+    
+    endpoints_model = serializers.EndpointsModel().model_validate(query, from_attributes=True)
+    endpoints_model = endpoints_model.model_dump(exclude_none = True, exclude_defaults = True, exclude_unset=True)
     paginator_settings = serializers.PaginatorSettings().model_validate(query, from_attributes=True)
     if endpoints_model:
-        paginator = Paginator(Log.filter(**endpoints_model).all(), page_size=paginator_settings.page_size)
+        paginator = Paginator(Endpoint.filter(**endpoints_model), page_size=paginator_settings.page_size)
     else:
-        paginator = Paginator(Log.all(), page_size=paginator_settings.page_size)
+        paginator = Paginator(Endpoint.all(), page_size=paginator_settings.page_size)
 
     await paginator.paginate(paginator_settings.page)
-    result = [serializers.AdminGetEndpointsModel.model_validate(item, from_attributes=True) for item in paginator.items]
-    response = serializers.AdminGetEndpointsSuccessfullyResponse(result=result).model_dump()
+    
+    results = []
+    for item in paginator.items:
+        result = serializers.EndpointsModel.model_validate(item, from_attributes=True)
+        permissions = [serializers.PermissionsModel.model_validate(item, from_attributes=True) for item in await item.permissions]
+        result.permissions = permissions
+        results.append(result)
+
+    response = serializers.AdminGetEndpointsSuccessfullyResponse(result=results, total_items=paginator.total_items, total_pages=paginator.total_pages).model_dump()
 
     return http_response(status = 200, **response)

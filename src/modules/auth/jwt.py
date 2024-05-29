@@ -53,22 +53,24 @@ class JwtAuth:
         if not endpoint:
             endpoint = await Endpoint.create(endpoint=endpoint)
 
-    async def get_endpoint_permissions(self, endpoint):
-        permissions_key = ENDPOINT_PERMISSIONS_KEY.format(endpoint)
+    async def get_endpoint_permissions(self, method:str, endpoint:str):
+        endpoint = endpoint[1:]
+        permissions_key = ENDPOINT_PERMISSIONS_KEY.format(method, endpoint)
         permissions = await RedisConn.get(permissions_key)
         if permissions is not None:
             return set(ujson.loads(permissions))
 
         # 如果缓存中没有，从数据库查询
-        endpoint = await Endpoint.get_or_none(endpoint=endpoint)
+        endpoint = await Endpoint.get_or_none(endpoint=endpoint, method=method)
         if not endpoint:
             return set()
         permissions = await endpoint.permissions.all()
 
         endpoint_permissions = [permission.permission_title for permission in permissions]
-        # 将结果缓存，设置过期时间为1小时
-        await RedisConn.set(permissions_key, ujson.dumps(endpoint_permissions), ex=3600)
-
+        if not endpoint_permissions:
+            return set()
+        
+        await RedisConn.set(permissions_key, ujson.dumps(endpoint_permissions), ex=30)
         return endpoint_permissions
         
     async def get_user_permissions(self, user_id):
@@ -78,7 +80,7 @@ class JwtAuth:
             return set(ujson.loads(permissions))
 
         # 如果缓存中没有，从数据库查询
-        user = await User.get(id=user_id).prefetch_related("roles")
+        user = await User.get(id=user_id)
         roles = await user.roles.all()
 
         role_permissions = await asyncio.gather(*(role.permissions.all() for role in roles))
@@ -86,8 +88,7 @@ class JwtAuth:
         if not user_permissions:
             return set()
 
-        # 将结果缓存，设置过期时间为1小时
-        await RedisConn.set(permissions_key, ujson.dumps(list(user_permissions)), ex=3600)
+        await RedisConn.set(permissions_key, ujson.dumps(list(user_permissions)), ex=30)
 
         return user_permissions
 
@@ -99,6 +100,7 @@ class JwtAuth:
                 
                 jwt_token = request.token
                 endpoint = request.uri_template
+                method = request.method
                 
                 is_authorized = self.decode_jwt(jwt_token)
 
@@ -106,14 +108,15 @@ class JwtAuth:
 
                     request.ctx.user = is_authorized
                     
-                    permissions = await self.get_endpoint_permissions(endpoint)
+                    permissions = await self.get_endpoint_permissions(method, endpoint)
                     
                     if permissions:
-                        user_id = request.ctx.user['user_id']
+                        user_id = int(request.ctx.user['user_id'])
                         user_permissions = await self.get_user_permissions(user_id)
 
                         if not all(perm in user_permissions for perm in permissions):
-                            new_log = Log(user = user_id, api = request.uri_template, action = "Privilege escalation", ip = request.ctx.real_ip, ua = request.ctx.ua, level = LOG_LEVEL_HIGH)
+                            user = await User.get(id=user_id)
+                            new_log = Log(user = user, api = endpoint, action = "Privilege escalation", ip = request.ctx.real_ip, ua = request.ctx.ua, level = LOG_LEVEL_HIGH)
                             await new_log.save()
                             return http_response(AuthorizedError.code, AuthorizedError.msg, status=403)
                                             

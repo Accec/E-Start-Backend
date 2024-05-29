@@ -1,21 +1,25 @@
 from pydantic import BaseModel, Field, field_validator
 import datetime
-from typing import Union, Optional
+from typing import Union, Optional, List, Any
 from utils.response import Successfully, ArgsInvalidError, RateLimitError, RequestError, TokenError, AuthorizedError
-
 
 
 class AdminGetEndpointsQuery(BaseModel):
     id: int = Field(default=None)
     endpoint: str  = Field(default=None)
     method: str = Field(default=None)
-    page: int = Field(default=None)
-    page_size: int = Field(default=None)
+    page: int = Field(default=1)
+    page_size: int = Field(default=20)
 
-class AdminGetEndpointsModel(BaseModel):
+class PermissionsModel(BaseModel):
+    id: int
+    permission_title: str
+
+class EndpointsModel(BaseModel):
     id: Optional[int] = None
-    endpoint: Optional[int] = None
+    endpoint: Optional[str] = None
     method: Optional[str] = None
+    permissions: Optional[Any] = []
     update_time: Optional[str] = None
     create_time: Optional[str] = None
 
@@ -26,13 +30,11 @@ class AdminGetEndpointsModel(BaseModel):
 class PaginatorSettings(BaseModel):
     page: int = Field(default=1)
     page_size: int = Field(default=20)
-    
-
 
 class AdminGetEndpointsSuccessfullyResponse(BaseModel):
     code: int = Field(default=Successfully.code)
     msg: str = Field(default=Successfully.msg)
-    result: Optional[Union[dict, list, str]] = Field(default=None)
+    result: Optional[Union[list, List[EndpointsModel]]] = Field(default=None)
     total_items: int
     total_pages: int
 
