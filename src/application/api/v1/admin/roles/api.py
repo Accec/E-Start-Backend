@@ -220,15 +220,15 @@ async def admin_post_roles_permissions(request: Request, body: serializers.Admin
 @openapi.summary("roles")
 @openapi.description("roles")
 @openapi.secured("token")
-@openapi.response(status=201, content={"application/json": serializers.AdminPostRolesPermissionsSuccessfullyResponse.model_json_schema()}, description="Successfully")
+@openapi.response(status=201, content={"application/json": serializers.AdminDeleteRolesPermissionsSuccessfullyResponse.model_json_schema()}, description="Successfully")
 @openapi.response(status=400, content={"application/json": serializers.ArgsInvalidResponse.model_json_schema()}, description="Role is exist")
 @openapi.response(status=401, content={"application/json": serializers.TokenExpiedResponse.model_json_schema()}, description="Token expied")
 @openapi.response(status=403, content={"application/json": serializers.AuthorizedErrorResponse.model_json_schema()}, description="Authorized error")
 @openapi.response(status=500, content={"application/json": serializers.RequestErrorResponse.model_json_schema()}, description="Request error")
 @openapi.response(status=429, content={"application/json": serializers.RateLimitResponse.model_json_schema()}, description="Rate limit")
-@validate(json=serializers.AdminPostRolesPermissionsBody)
+@validate(json=serializers.AdminDeleteRolesPermissionsBody)
 @JwtAuth.permissions_authorized()
-async def admin_delete_roles_permissions(request: Request, body: serializers.AdminPostRolesPermissionsBody):
+async def admin_delete_roles_permissions(request: Request, body: serializers.AdminDeleteRolesPermissionsBody):
     if body.id and body.role_name:
         roles_model = Role.filter(id=body.id, role_name=body.role_name)
     elif body.id:

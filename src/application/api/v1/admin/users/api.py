@@ -14,7 +14,7 @@ from modules.auth import jwt
 
 JwtAuth = jwt.JwtAuth()
 
-@AdminBlueprint.post("/users")
+@AdminBlueprint.get("/users")
 @openapi.summary("users")
 @openapi.description("users")
 @openapi.secured("token")

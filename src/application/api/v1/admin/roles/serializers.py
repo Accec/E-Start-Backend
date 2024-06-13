@@ -11,6 +11,11 @@ class AdminPostRolesPermissionsBody(BaseModel):
     role_name: Optional[str] = None
     permissions: Optional[PermissionsModel] = None
 
+class AdminDeleteRolesPermissionsBody(BaseModel):
+    id: Optional[int] = None
+    role_name: Optional[str] = None
+    permissions: Optional[PermissionsModel] = None
+
 class AdminPutRolesBody(BaseModel):
     id: Optional[int]
     role_name: Optional[str]
