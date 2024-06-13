@@ -34,7 +34,7 @@ JwtAuth = jwt.JwtAuth()
 @JwtAuth.permissions_authorized()
 async def admin_get_endpoints(request: Request, query: serializers.AdminGetEndpointsQuery):
     
-    endpoints_model = serializers.EndpointsModel().model_validate(query, from_attributes=True)
+    endpoints_model = serializers.EndpointsModel.model_validate(query, from_attributes=True)
     endpoints_model = endpoints_model.model_dump(exclude_none = True, exclude_defaults = True, exclude_unset=True)
     paginator_settings = serializers.PaginatorSettings().model_validate(query, from_attributes=True)
     if endpoints_model:

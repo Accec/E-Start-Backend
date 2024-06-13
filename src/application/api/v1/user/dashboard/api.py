@@ -35,9 +35,14 @@ async def user_get_dashboard(request: Request):
     permissions = {permission for role in roles for permission in await role.permissions.all()}
     endpoints = {endpoint for permission in permissions for endpoint in await permission.endpoints}
     
-    user_info = serializers.UserGetDashboardUserModel.model_validate(user, from_attributes=True)
-    roles = [serializers.UserGetDashboardUserModel.model_validate(role, from_attributes=True) for role in roles]
-    serializers.UserGetDashboardResultsModel(user_info=user_info, roles=roles, )
+    permissions = [serializers.UserGetDashboardPermissionsModel.model_validate(permission, from_attributes=True) for permission in permissions]
+    endpoints = [serializers.UserGetDashboardEndpointsModel.model_validate(endpoint, from_attributes=True) for endpoint in endpoints]
     
-    print (user, roles, permissions, endpoints)
-    return http_response(status = 200, code = Successfully.code, msg = Successfully.msg)
+    user_info = serializers.UserGetDashboardUserModel.model_validate(user, from_attributes=True)
+    roles = [serializers.UserGetDashboardRolesModel.model_validate(role, from_attributes=True) for role in roles]
+    
+    result = serializers.UserGetDashboardResultsModel(user_info=user_info, roles=roles, endpoints=endpoints, permissions=permissions)
+
+    response = serializers.UserGetDashboardSuccessfullyResponse(results=result).model_dump()
+    
+    return http_response(status = 200, **response)

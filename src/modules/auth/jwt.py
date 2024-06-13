@@ -45,7 +45,6 @@ class JwtAuth:
             decode_jwt = PyJWT().decode(token.encode(), self.secret_key, algorithms=['HS256'])
             return decode_jwt
         except Exception as e:
-            print (e.__str__())
             return False
         
     async def save_endpoint(self, endpoint):
@@ -92,8 +91,7 @@ class JwtAuth:
 
         return user_permissions
 
-    def permissions_authorized(self, url=None):
-        print (url)
+    def permissions_authorized(self):
         def decorator(f):
             @wraps(f)
             async def decorated_function(request, *args, **kwargs):

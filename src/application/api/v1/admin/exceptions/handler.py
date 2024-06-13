@@ -10,6 +10,3 @@ from utils.util import http_response
 @AdminBlueprint.exception(ValidationError)
 async def validation_error(request: Request, exception: ValidationError):
     return http_response(ArgsInvalidError.code, ArgsInvalidError.msg, exception.message, status=500)
-
-
-

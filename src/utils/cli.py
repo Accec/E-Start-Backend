@@ -59,14 +59,8 @@ def init_database():
         if await Role.exists(role_name="User"):
             click.echo("Role: User is exist.")
         else:
-            await Role.create(role_name="Admin")
+            await Role.create(role_name="User")
             click.echo("Role: User created.")
-
-        if await Role.exists(role_name="Blacklist"):
-            click.echo("Role: Blacklist is exist.")
-        else:
-            await Role.create(role_name="Admin")
-            click.echo("Role: Blacklist created.")
 
     run_async(init_database())
 

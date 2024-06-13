@@ -2,6 +2,20 @@ from pydantic import BaseModel, Field
 from typing import Union, Optional
 from utils.response import Successfully, ArgsInvalidError, RateLimitError, RequestError, TokenError, AuthorizedError
 
+class AdminGetUsersQuery(BaseModel):
+    id: int = Field(default=None)
+    role_name: str  = Field(default=None)
+    page: int = Field(default=1)
+    page_size: int = Field(default=20)
+
+class UsersModel(BaseModel):
+    id: int = Field(default=None)
+    role_name: str  = Field(default=None)
+
+class PaginatorSettings(BaseModel):
+    page: int = Field(default=1)
+    page_size: int = Field(default=20)
+
 class SuccessfullyResponse(BaseModel):
     code: int = Field(default=Successfully.code)
     msg: str = Field(default=Successfully.msg)

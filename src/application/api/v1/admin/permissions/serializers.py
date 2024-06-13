@@ -1,51 +1,53 @@
 from pydantic import BaseModel, Field, field_validator
-import datetime
-from typing import Union, Optional, List
+from typing import Union, Optional, List, Any
 from utils.response import Successfully, ArgsInvalidError, RateLimitError, RequestError, TokenError, AuthorizedError
 
-class AdminGetLogsQuery(BaseModel):
+class PermissionsModel(BaseModel):
     id: Optional[int] = None
-    user_id: Optional[int] = None
-    api: Optional[str] = None
-    action: Optional[str] = None
-    ip: Optional[str] = None
-    ua: Optional[str] = None
-    level: Optional[int] = None
-    update_time: Optional[str] = None
-    create_time: Optional[str] = None
-    page: Optional[int] = 1
-    page_size: Optional[int] = 20
+    permission_title: Optional[str] = None
 
-    @field_validator('create_time', 'update_time', mode="before")
-    def format_datetime_to_str(cls, value: datetime.datetime):
-        return value.strftime("%Y-%m-%d %H:%M:%S") if value else None
+class AdminPostPermissionsBody(BaseModel):
+    permission_title: Optional[str] = None
 
-class AdminGetLogModel(BaseModel):
+class AdminPutPermissionsBody(BaseModel):
+    id: Optional[int]
+    permission_title: Optional[str]
+
+class AdminGetPermissionsQuery(BaseModel):
     id: Optional[int] = None
-    user_id: Optional[int] = None
-    api: Optional[str] = None
-    action: Optional[str] = None
-    ip: Optional[str] = None
-    ua: Optional[str] = None
-    level: Optional[int] = None
-    update_time: Optional[str] = None
-    create_time: Optional[str] = None
+    permission_title: Optional[str] = None
+    page: Optional[int] = Field(default=1)
+    page_size: Optional[int] = Field(default=20)
 
-    @field_validator('create_time', 'update_time', mode="before")
-    def format_datetime_to_str(cls, value: datetime.datetime):
-        return value.strftime("%Y-%m-%d %H:%M:%S") if value else None
-
+class AdminDeletePermissionsQuery(BaseModel):
+    id: Optional[int] = None
+    permission_title: Optional[str] = None
 
 class PaginatorSettings(BaseModel):
     page: Optional[int] = Field(default=1)
     page_size: Optional[int] = Field(default=20)
 
-class AdminGetLogsSuccessfullyResponse(BaseModel):
+class AdminGetPermissionsSuccessfullyResponse(BaseModel):
     code: int = Field(default=Successfully.code)
     msg: str = Field(default=Successfully.msg)
-    result: Optional[List[AdminGetLogModel]] = Field(default=None)
+    result: Optional[Union[PermissionsModel, list]] = Field(default=None)
     total_items: int
     total_pages: int
+
+class AdminPostPermissionsSuccessfullyResponse(BaseModel):
+    code: int = Field(default=Successfully.code)
+    msg: str = Field(default=Successfully.msg)
+    result: Optional[Union[PermissionsModel, list]] = Field(default=None)
+
+class AdminDeletePermissionsSuccessfullyResponse(BaseModel):
+    code: int = Field(default=Successfully.code)
+    msg: str = Field(default=Successfully.msg)
+    result: Optional[Union[PermissionsModel, list]] = Field(default=None)
+
+class AdminPutPermissionsSuccessfullyResponse(BaseModel):
+    code: int = Field(default=Successfully.code)
+    msg: str = Field(default=Successfully.msg)
+    result: Optional[Union[PermissionsModel, list]] = Field(default=None)
 
 class RequestErrorResponse(BaseModel):
     code: int = Field(default=RequestError.code)

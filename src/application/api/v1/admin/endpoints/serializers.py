@@ -5,15 +5,15 @@ from utils.response import Successfully, ArgsInvalidError, RateLimitError, Reque
 
 
 class AdminGetEndpointsQuery(BaseModel):
-    id: int = Field(default=None)
-    endpoint: str  = Field(default=None)
-    method: str = Field(default=None)
-    page: int = Field(default=1)
-    page_size: int = Field(default=20)
+    id: Optional[int] = None
+    endpoint: Optional[str] = None
+    method: Optional[str] = None
+    page: Optional[int] = Field(default=1)
+    page_size: Optional[int] = Field(default=20)
 
 class PermissionsModel(BaseModel):
-    id: int
-    permission_title: str
+    id: int = None
+    permission_title: str = None
 
 class EndpointsModel(BaseModel):
     id: Optional[int] = None
@@ -28,13 +28,13 @@ class EndpointsModel(BaseModel):
         return value.strftime("%Y-%m-%d %H:%M:%S") if value else None
 
 class PaginatorSettings(BaseModel):
-    page: int = Field(default=1)
-    page_size: int = Field(default=20)
+    page: Optional[int] = Field(default=1)
+    page_size: Optional[int] = Field(default=20)
 
 class AdminGetEndpointsSuccessfullyResponse(BaseModel):
     code: int = Field(default=Successfully.code)
     msg: str = Field(default=Successfully.msg)
-    result: Optional[Union[list, List[EndpointsModel]]] = Field(default=None)
+    result: Optional[Union[list, List[EndpointsModel]]]
     total_items: int
     total_pages: int
 
