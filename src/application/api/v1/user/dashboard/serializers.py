@@ -17,6 +17,7 @@ class UserGetDashboardPermissionsModel(BaseModel):
 
 class UserGetDashboardEndpointsModel(BaseModel):
     id: int
+    method: str
     endpoint: str
 
 class UserGetDashboardResultsModel(BaseModel):

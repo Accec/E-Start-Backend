@@ -34,7 +34,7 @@ async def user_post_register(request: Request, body: serializers.PostRegisterBod
         return http_response(UserExistError.code, UserExistError.msg, status=500)
 
     # generate open id and hash password
-    open_id = generate_openid(body.account, body.password, str(datetime.datetime.now(datetime.UTC).timestamp() * 1000))
+    open_id = generate_openid(body.account, str(datetime.datetime.now(datetime.UTC).timestamp() * 1000))
     hashed_password = hash_password(body.password)
     # save user
     new_user = User(account=body.account, password=hashed_password, open_id = open_id)

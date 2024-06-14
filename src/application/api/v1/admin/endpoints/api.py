@@ -136,7 +136,7 @@ async def admin_post_endpoints_permissions(request: Request, body: serializers.A
 @openapi.response(status=429, content={"application/json": serializers.RateLimitResponse.model_json_schema()}, description="Rate limit")
 @validate(json=serializers.AdminDeleteEndpointsPermissionsSuccessfullyResponse)
 @JwtAuth.permissions_authorized()
-async def admin_delete_roles_permissions(request: Request, body: serializers.AdminDeleteEndpointsPermissionsBody):
+async def admin_delete_endpoints_permissions(request: Request, body: serializers.AdminDeleteEndpointsPermissionsBody):
     if body.id and body.endpoint:
         endpoints_model = Endpoint.filter(id=body.id, role_name=body.endpoint)
     elif body.id:

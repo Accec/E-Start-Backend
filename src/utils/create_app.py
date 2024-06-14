@@ -68,9 +68,6 @@ def create_app():
 
     return server
 
-def init_endpoint(server: sanic.Sanic):
-    server.get_app().router
-
 def autodiscover_api():
     logger = logging.getLogger(SERVER_LOGGER)
 

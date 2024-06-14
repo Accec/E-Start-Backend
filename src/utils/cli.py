@@ -1,6 +1,8 @@
 import click
 import random
 import string
+import base64
+import secrets
 from tortoise import Tortoise, run_async
 import datetime
 
@@ -91,7 +93,12 @@ def create_admin(username, password):
 
     run_async(create_admin(username, password))
 
-    
+@cli.command("get_secret", help="Generate secret token for JWT or Nginx.")
+@click.option("--range", default=4096, show_default="Default is 4096 (if none provided)", help="The range of the token.")
+
+def get_secret(range: int):
+    token = base64.b64encode(secrets.token_bytes(range)).decode()
+    click.echo(f"{token}")
 
 if __name__ == "__main__":
     cli()
