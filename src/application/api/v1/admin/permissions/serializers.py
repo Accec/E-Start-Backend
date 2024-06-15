@@ -19,7 +19,7 @@ class AdminGetPermissionsQuery(BaseModel):
     page: Optional[int] = Field(default=1)
     page_size: Optional[int] = Field(default=20)
 
-class AdminDeletePermissionsQuery(BaseModel):
+class AdminDeletePermissionsBody(BaseModel):
     id: Optional[int] = None
     permission_title: Optional[str] = None
 

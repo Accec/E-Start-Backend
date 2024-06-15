@@ -1,16 +1,14 @@
 from utils.router import AdminBlueprint
 from utils.util import http_response
 from utils.constant import API_LOGGER
-from utils.constant import LOG_LEVEL_MIDIUM
+from utils.constant import LogLevel
 
 from sanic.request import Request
 from sanic_ext import validate, openapi
 
 from . import serializers
-from models import User, Log, Role, Permission
+from models import User, Log, Permission
 
-from modules.rate_limit import rate_limit
-from modules.encryptor import hash_password
 from modules.auth import jwt
 
 from utils.util import Paginator
@@ -62,6 +60,7 @@ async def admin_get_permissions(request: Request, query: serializers.AdminGetPer
 @openapi.summary("permissions")
 @openapi.description("permissions")
 @openapi.secured("token")
+@openapi.body({"application/json": serializers.AdminPostPermissionsBody.model_json_schema()})
 @openapi.response(status=201, content={"application/json": serializers.AdminPostPermissionsSuccessfullyResponse.model_json_schema()}, description="Successfully")
 @openapi.response(status=400, content={"application/json": serializers.ArgsInvalidResponse.model_json_schema()}, description="Role is exist")
 @openapi.response(status=401, content={"application/json": serializers.TokenExpiedResponse.model_json_schema()}, description="Token expied")
@@ -81,7 +80,7 @@ async def admin_post_permissions(request: Request, body: serializers.AdminPostPe
     user_id = request.ctx.user['user_id']
     user = await User.get(id=user_id)
     Logger.info(f"[Admin] - New permission [{body.permission_title}] is created")
-    new_log = Log(user = user, api = request.uri_template, action = f"New permission [{body.permission_title}] is created", ip = request.ctx.real_ip, ua = request.ctx.ua, level = LOG_LEVEL_MIDIUM)
+    new_log = Log(user = user, api = request.uri_template, action = f"New permission [{body.permission_title}] is created", ip = request.ctx.real_ip, ua = request.ctx.ua, level = LogLevel.MIDIUM)
     await new_log.save()
 
     response = serializers.AdminPostPermissionsSuccessfullyResponse().model_dump()
@@ -93,15 +92,16 @@ async def admin_post_permissions(request: Request, body: serializers.AdminPostPe
 @openapi.summary("permissions")
 @openapi.description("permissions")
 @openapi.secured("token")
+@openapi.body({"application/json": serializers.AdminDeletePermissionsBody.model_json_schema()})
 @openapi.response(status=204, content={"application/json": serializers.AdminDeletePermissionsSuccessfullyResponse.model_json_schema()}, description="Successfully")
 @openapi.response(status=400, content={"application/json": serializers.ArgsInvalidResponse.model_json_schema()}, description="Role is not exist")
 @openapi.response(status=401, content={"application/json": serializers.TokenExpiedResponse.model_json_schema()}, description="Token expied")
 @openapi.response(status=403, content={"application/json": serializers.AuthorizedErrorResponse.model_json_schema()}, description="Authorized error")
 @openapi.response(status=500, content={"application/json": serializers.RequestErrorResponse.model_json_schema()}, description="Request error")
 @openapi.response(status=429, content={"application/json": serializers.RateLimitResponse.model_json_schema()}, description="Rate limit")
-@validate(query=serializers.AdminDeletePermissionsQuery)
+@validate(json=serializers.AdminDeletePermissionsBody)
 @JwtAuth.permissions_authorized()
-async def admin_delete_permissions(request: Request, query: serializers.AdminDeletePermissionsQuery):
+async def admin_delete_permissions(request: Request, query: serializers.AdminDeletePermissionsBody):
     permission_model = serializers.PermissionsModel.model_validate(query, from_attributes=True)
     permission_model = permission_model.model_dump(exclude_none = True, exclude_defaults = True, exclude_unset=True)
     if not permission_model:
@@ -117,7 +117,7 @@ async def admin_delete_permissions(request: Request, query: serializers.AdminDel
     user_id = request.ctx.user['user_id']
     user = await User.get(id=user_id)
     Logger.info(f"[Admin] - Permission [{permission_model}] is deleted")
-    new_log = Log(user = user, api = request.uri_template, action = f"Permission [{permission_model}] is deleted", ip = request.ctx.real_ip, ua = request.ctx.ua, level = LOG_LEVEL_MIDIUM)
+    new_log = Log(user = user, api = request.uri_template, action = f"Permission [{permission_model}] is deleted", ip = request.ctx.real_ip, ua = request.ctx.ua, level = LogLevel.MIDIUM)
     await new_log.save()
 
     response = serializers.AdminDeletePermissionsSuccessfullyResponse().model_dump()
@@ -129,6 +129,7 @@ async def admin_delete_permissions(request: Request, query: serializers.AdminDel
 @openapi.summary("permissions")
 @openapi.description("permissions")
 @openapi.secured("token")
+@openapi.body({"application/json": serializers.AdminPutPermissionsBody.model_json_schema()})
 @openapi.response(status=201, content={"application/json": serializers.AdminPutPermissionsBody.model_json_schema()}, description="Successfully")
 @openapi.response(status=400, content={"application/json": serializers.ArgsInvalidResponse.model_json_schema()}, description="Role is exist")
 @openapi.response(status=401, content={"application/json": serializers.TokenExpiedResponse.model_json_schema()}, description="Token expied")
@@ -151,7 +152,7 @@ async def admin_put_permissions(request: Request, body: serializers.AdminPutPerm
     user_id = request.ctx.user['user_id']
     user = await User.get(id=user_id)
     Logger.info(f"[Admin] - Permission [{old_permission_title}] is renamed to [{body.permission_title}]")
-    new_log = Log(user = user, api = request.uri_template, action = f"Permission [{old_permission_title}] is renamed to [{body.permission_title}]", ip = request.ctx.real_ip, ua = request.ctx.ua, level = LOG_LEVEL_MIDIUM)
+    new_log = Log(user = user, api = request.uri_template, action = f"Permission [{old_permission_title}] is renamed to [{body.permission_title}]", ip = request.ctx.real_ip, ua = request.ctx.ua, level = LogLevel.MIDIUM)
     await new_log.save()
 
     response = serializers.AdminPutPermissionsSuccessfullyResponse().model_dump()

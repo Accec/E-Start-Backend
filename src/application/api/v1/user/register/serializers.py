@@ -4,7 +4,7 @@ from typing import Union, Optional
 from utils.response import Successfully, ArgsInvalidError, RateLimitError, RequestError, UserExistError
 from sanic_ext.exceptions import ValidationError
 
-class PostRegisterBody(BaseModel):
+class UserPostRegisterBody(BaseModel):
     account: str = Field(min_length=5, max_length=20)
     password: str = Field(min_length=8, max_length=20)
     verify_code: Optional[str] = Field(default=None, min_length=6, max_length=6)
@@ -28,7 +28,7 @@ class UserExistResponse(BaseModel):
     msg: str = Field(default=UserExistError.msg)
     results: Optional[Union[dict, list, str]] = Field(default=None)
 
-class SuccessfullyResponse(BaseModel):
+class UserPostLoginSuccessfullyResponse(BaseModel):
     code: int = Field(default=Successfully.code)
     msg: str = Field(default=Successfully.msg)
     results: Optional[Union[dict, list, str]] = Field(default=None)
@@ -36,7 +36,6 @@ class SuccessfullyResponse(BaseModel):
 class RequestErrorResponse(BaseModel):
     code: int = Field(default=RequestError.code)
     msg: str = Field(default=RequestError.msg)
-    results: Optional[Union[dict, list, str]] = Field(default=None)
 
 class ArgsInvalidResponse(BaseModel):
     code: int = Field(default=ArgsInvalidError.code)

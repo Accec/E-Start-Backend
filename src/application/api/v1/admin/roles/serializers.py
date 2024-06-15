@@ -29,7 +29,7 @@ class AdminGetRolesQuery(BaseModel):
 class AdminPostRolesBody(BaseModel):
     role_name: str = None
 
-class AdminDeleteRolesQuery(BaseModel):
+class AdminDeleteRolesBody(BaseModel):
     id: Optional[int] = None
     role_name: Optional[str] = None
 

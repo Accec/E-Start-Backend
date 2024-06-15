@@ -1,7 +1,7 @@
 from utils.router import AdminBlueprint
 from utils.util import http_response
 from utils.constant import API_LOGGER
-from utils.constant import LOG_LEVEL_MIDIUM
+from utils.constant import LogLevel
 
 from sanic.request import Request
 from sanic_ext import validate, openapi
@@ -9,8 +9,6 @@ from sanic_ext import validate, openapi
 from . import serializers
 from models import User, Log, Endpoint, Permission
 
-from modules.rate_limit import rate_limit
-from modules.encryptor import hash_password
 from modules.auth import jwt
 
 from utils.util import Paginator
@@ -65,6 +63,7 @@ async def admin_get_endpoints(request: Request, query: serializers.AdminGetEndpo
 @openapi.summary("endpoints")
 @openapi.description("endpoints")
 @openapi.secured("token")
+@openapi.body({"application/json": serializers.AdminPostEndpointsPermissionsBody.model_json_schema()})
 @openapi.response(status=200, content={"application/json": serializers.AdminPostEndpointsPermissionsSuccessfullyResponse.model_json_schema()}, description="Successfully")
 @openapi.response(status=400, content={"application/json": serializers.ArgsInvalidResponse.model_json_schema()}, description="Args invalid")
 @openapi.response(status=401, content={"application/json": serializers.TokenExpiedResponse.model_json_schema()}, description="Token expied")
@@ -112,7 +111,7 @@ async def admin_post_endpoints_permissions(request: Request, body: serializers.A
     user_id = request.ctx.user['user_id']
     user = await User.get(id=user_id)
     Logger.info(f"[Admin] - Endpoint [{endpoints_model.endpoint}] add permission [{permissions_model.permission_title}]")
-    new_log = Log(user = user, api = request.uri_template, action = f"Role [{endpoints_model.endpoint}] add permission [{permissions_model.permission_title}]", ip = request.ctx.real_ip, ua = request.ctx.ua, level = LOG_LEVEL_MIDIUM)
+    new_log = Log(user = user, api = request.uri_template, action = f"Role [{endpoints_model.endpoint}] add permission [{permissions_model.permission_title}]", ip = request.ctx.real_ip, ua = request.ctx.ua, level = LogLevel.MIDIUM)
     await new_log.save()
 
     response = serializers.AdminPostEndpointsPermissionsSuccessfullyResponse().model_dump()
@@ -124,6 +123,7 @@ async def admin_post_endpoints_permissions(request: Request, body: serializers.A
 @openapi.summary("endpoints")
 @openapi.description("endpoints")
 @openapi.secured("token")
+@openapi.body({"application/json": serializers.AdminDeleteEndpointsPermissionsBody.model_json_schema()})
 @openapi.response(status=204, content={"application/json": serializers.AdminDeleteEndpointsPermissionsSuccessfullyResponse.model_json_schema()}, description="Successfully")
 @openapi.response(status=400, content={"application/json": serializers.ArgsInvalidResponse.model_json_schema()}, description="Role is exist")
 @openapi.response(status=401, content={"application/json": serializers.TokenExpiedResponse.model_json_schema()}, description="Token expied")
@@ -171,7 +171,7 @@ async def admin_delete_endpoints_permissions(request: Request, body: serializers
     user_id = request.ctx.user['user_id']
     user = await User.get(id=user_id)
     Logger.info(f"[Admin] - Endpoint [{endpoints_model.endpoint}] remove permission [{permissions_model.permission_title}]")
-    new_log = Log(user = user, api = request.uri_template, action = f"Endpoint [{endpoints_model.endpoint}] remove permission [{permissions_model.permission_title}]", ip = request.ctx.real_ip, ua = request.ctx.ua, level = LOG_LEVEL_MIDIUM)
+    new_log = Log(user = user, api = request.uri_template, action = f"Endpoint [{endpoints_model.endpoint}] remove permission [{permissions_model.permission_title}]", ip = request.ctx.real_ip, ua = request.ctx.ua, level = LogLevel.MIDIUM)
     await new_log.save()
 
     response = serializers.AdminDeleteEndpointsPermissionsSuccessfullyResponse().model_dump()

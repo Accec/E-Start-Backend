@@ -5,7 +5,7 @@ import datetime
 
 from sanic import router
 
-from utils.constant import LOG_LEVEL_HIGH, USER_PERMISSIONS_KEY, ENDPOINT_PERMISSIONS_KEY
+from utils.constant import LogLevel, USER_PERMISSIONS_KEY, ENDPOINT_PERMISSIONS_KEY
 from utils.response import AuthorizedError, TokenError
 from utils.util import http_response
 
@@ -114,7 +114,7 @@ class JwtAuth:
 
                         if not all(perm in user_permissions for perm in permissions):
                             user = await User.get(id=user_id)
-                            new_log = Log(user = user, api = endpoint, action = "Privilege escalation", ip = request.ctx.real_ip, ua = request.ctx.ua, level = LOG_LEVEL_HIGH)
+                            new_log = Log(user = user, api = endpoint, action = "Privilege escalation", ip = request.ctx.real_ip, ua = request.ctx.ua, level = LogLevel.HIGH)
                             await new_log.save()
                             return http_response(AuthorizedError.code, AuthorizedError.msg, status=403)
                                             

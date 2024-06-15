@@ -1,5 +1,8 @@
 from tortoise.models import Model
 from tortoise import fields
+from utils.constant import LogLevel, UserStatus
+
+
 
 class Log(Model):
     id = fields.BigIntField(pk = True, description = "ID")
@@ -12,7 +15,7 @@ class Log(Model):
     ip = fields.CharField(index = True, max_length=64, description = "操作IP")
     ua = fields.CharField(index = True, max_length=255, description = "访问UA")
 
-    level = fields.IntField(index = True, max_length=32, description = "日志等级")
+    level = fields.IntEnumField(LogLevel, index = True, description = "日志等级")
 
     update_time = fields.DatetimeField(auto_now=True, description="更新时间")
     create_time = fields.DatetimeField(auto_now_add=True, description="创建时间")
@@ -27,6 +30,8 @@ class User(Model):
     password = fields.CharField(max_length = 32, description = "用户密码")
 
     open_id = fields.CharField(max_length = 32, index = True, unique = True, description = "OPENID")
+
+    status = fields.IntEnumField(UserStatus, index = True, description = "用户状态")
 
     logs = fields.ReverseRelation["Log"]
     roles = fields.ManyToManyField('e-starter.Role', related_name='users', through='user_role')

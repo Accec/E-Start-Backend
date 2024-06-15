@@ -1,17 +1,12 @@
 from utils.router import UserBlueprint
 from utils.util import http_response
-from utils.response import Successfully, ArgsInvalidError, RateLimitError
-
-from utils.constant import API_LOGGER
 
 from sanic.request import Request
-from sanic_ext import validate, openapi
+from sanic_ext import openapi
 
 from . import serializers
-from models import User, Role, Endpoint
+from models import User
 
-from modules.rate_limit import rate_limit
-from modules.encryptor import hash_password
 from modules.auth import jwt
 
 JwtAuth = jwt.JwtAuth()

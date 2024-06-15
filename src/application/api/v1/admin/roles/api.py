@@ -1,7 +1,7 @@
 from utils.router import AdminBlueprint
 from utils.util import http_response
 from utils.constant import API_LOGGER
-from utils.constant import LOG_LEVEL_MIDIUM
+from utils.constant import LogLevel
 
 from sanic.request import Request
 from sanic_ext import validate, openapi
@@ -9,8 +9,6 @@ from sanic_ext import validate, openapi
 from . import serializers
 from models import User, Log, Role, Permission
 
-from modules.rate_limit import rate_limit
-from modules.encryptor import hash_password
 from modules.auth import jwt
 
 from utils.util import Paginator
@@ -64,6 +62,7 @@ async def admin_get_roles(request: Request, query: serializers.AdminGetRolesQuer
 @openapi.summary("roles")
 @openapi.description("roles")
 @openapi.secured("token")
+@openapi.body({"application/json": serializers.AdminPostRolesBody.model_json_schema()})
 @openapi.response(status=201, content={"application/json": serializers.AdminPostRolesSuccessfullyResponse.model_json_schema()}, description="Successfully")
 @openapi.response(status=400, content={"application/json": serializers.ArgsInvalidResponse.model_json_schema()}, description="Role is exist")
 @openapi.response(status=401, content={"application/json": serializers.TokenExpiedResponse.model_json_schema()}, description="Token expied")
@@ -83,7 +82,7 @@ async def admin_post_roles(request: Request, body: serializers.AdminPostRolesBod
     user_id = request.ctx.user['user_id']
     user = await User.get(id=user_id)
     Logger.info(f"[Admin] - New role [{body.role_name}] is created")
-    new_log = Log(user = user, api = request.uri_template, action = f"New role [{body.role_name}] is created", ip = request.ctx.real_ip, ua = request.ctx.ua, level = LOG_LEVEL_MIDIUM)
+    new_log = Log(user = user, api = request.uri_template, action = f"New role [{body.role_name}] is created", ip = request.ctx.real_ip, ua = request.ctx.ua, level = LogLevel.MIDIUM)
     await new_log.save()
 
     response = serializers.AdminPostRolesSuccessfullyResponse().model_dump()
@@ -95,15 +94,16 @@ async def admin_post_roles(request: Request, body: serializers.AdminPostRolesBod
 @openapi.summary("roles")
 @openapi.description("roles")
 @openapi.secured("token")
+@openapi.body({"application/json": serializers.AdminDeleteRolesBody.model_json_schema()})
 @openapi.response(status=204, content={"application/json": serializers.AdminDeleteRolesSuccessfullyResponse.model_json_schema()}, description="Successfully")
 @openapi.response(status=400, content={"application/json": serializers.ArgsInvalidResponse.model_json_schema()}, description="Role is not exist")
 @openapi.response(status=401, content={"application/json": serializers.TokenExpiedResponse.model_json_schema()}, description="Token expied")
 @openapi.response(status=403, content={"application/json": serializers.AuthorizedErrorResponse.model_json_schema()}, description="Authorized error")
 @openapi.response(status=500, content={"application/json": serializers.RequestErrorResponse.model_json_schema()}, description="Request error")
 @openapi.response(status=429, content={"application/json": serializers.RateLimitResponse.model_json_schema()}, description="Rate limit")
-@validate(query=serializers.AdminDeleteRolesQuery)
+@validate(json=serializers.AdminDeleteRolesBody)
 @JwtAuth.permissions_authorized()
-async def admin_delete_roles(request: Request, query: serializers.AdminDeleteRolesQuery):
+async def admin_delete_roles(request: Request, query: serializers.AdminDeleteRolesBody):
     role_model = serializers.RolesModel.model_validate(query, from_attributes=True)
     role_model = role_model.model_dump(exclude_none = True, exclude_defaults = True, exclude_unset=True)
     if not role_model:
@@ -119,7 +119,7 @@ async def admin_delete_roles(request: Request, query: serializers.AdminDeleteRol
     user_id = request.ctx.user['user_id']
     user = await User.get(id=user_id)
     Logger.info(f"[Admin] - Role [{role_model}] is deleted")
-    new_log = Log(user = user, api = request.uri_template, action = f"Role [{role_model}] is deleted", ip = request.ctx.real_ip, ua = request.ctx.ua, level = LOG_LEVEL_MIDIUM)
+    new_log = Log(user = user, api = request.uri_template, action = f"Role [{role_model}] is deleted", ip = request.ctx.real_ip, ua = request.ctx.ua, level = LogLevel.MIDIUM)
     await new_log.save()
 
     response = serializers.AdminDeleteRolesSuccessfullyResponse().model_dump()
@@ -131,6 +131,7 @@ async def admin_delete_roles(request: Request, query: serializers.AdminDeleteRol
 @openapi.summary("roles")
 @openapi.description("roles")
 @openapi.secured("token")
+@openapi.body({"application/json": serializers.AdminPutRolesBody.model_json_schema()})
 @openapi.response(status=201, content={"application/json": serializers.AdminPutRolesSuccessfullyResponse.model_json_schema()}, description="Successfully")
 @openapi.response(status=400, content={"application/json": serializers.ArgsInvalidResponse.model_json_schema()}, description="Role is exist")
 @openapi.response(status=401, content={"application/json": serializers.TokenExpiedResponse.model_json_schema()}, description="Token expied")
@@ -153,7 +154,7 @@ async def admin_put_roles(request: Request, body: serializers.AdminPutRolesBody)
     user_id = request.ctx.user['user_id']
     user = await User.get(id=user_id)
     Logger.info(f"[Admin] - Role [{old_role_name}] is renamed to [{body.role_name}]")
-    new_log = Log(user = user, api = request.uri_template, action = f"Role [{old_role_name}] is renamed to [{body.role_name}]", ip = request.ctx.real_ip, ua = request.ctx.ua, level = LOG_LEVEL_MIDIUM)
+    new_log = Log(user = user, api = request.uri_template, action = f"Role [{old_role_name}] is renamed to [{body.role_name}]", ip = request.ctx.real_ip, ua = request.ctx.ua, level = LogLevel.MIDIUM)
     await new_log.save()
 
     response = serializers.AdminPutRolesSuccessfullyResponse().model_dump()
@@ -165,6 +166,7 @@ async def admin_put_roles(request: Request, body: serializers.AdminPutRolesBody)
 @openapi.summary("roles")
 @openapi.description("roles")
 @openapi.secured("token")
+@openapi.body({"application/json": serializers.AdminPostRolesPermissionsBody.model_json_schema()})
 @openapi.response(status=201, content={"application/json": serializers.AdminPostRolesPermissionsSuccessfullyResponse.model_json_schema()}, description="Successfully")
 @openapi.response(status=400, content={"application/json": serializers.ArgsInvalidResponse.model_json_schema()}, description="Role is exist")
 @openapi.response(status=401, content={"application/json": serializers.TokenExpiedResponse.model_json_schema()}, description="Token expied")
@@ -212,7 +214,7 @@ async def admin_post_roles_permissions(request: Request, body: serializers.Admin
     user_id = request.ctx.user['user_id']
     user = await User.get(id=user_id)
     Logger.info(f"[Admin] - Role [{roles_model.role_name}] add permission [{permissions_model.permission_title}]")
-    new_log = Log(user = user, api = request.uri_template, action = f"Role [{roles_model.role_name}] add permission [{permissions_model.permission_title}]", ip = request.ctx.real_ip, ua = request.ctx.ua, level = LOG_LEVEL_MIDIUM)
+    new_log = Log(user = user, api = request.uri_template, action = f"Role [{roles_model.role_name}] add permission [{permissions_model.permission_title}]", ip = request.ctx.real_ip, ua = request.ctx.ua, level = LogLevel.MIDIUM)
     await new_log.save()
 
     response = serializers.AdminPostRolesPermissionsSuccessfullyResponse().model_dump()
@@ -224,6 +226,7 @@ async def admin_post_roles_permissions(request: Request, body: serializers.Admin
 @openapi.summary("roles")
 @openapi.description("roles")
 @openapi.secured("token")
+@openapi.body({"application/json": serializers.AdminDeleteRolesPermissionsBody.model_json_schema()})
 @openapi.response(status=201, content={"application/json": serializers.AdminDeleteRolesPermissionsSuccessfullyResponse.model_json_schema()}, description="Successfully")
 @openapi.response(status=400, content={"application/json": serializers.ArgsInvalidResponse.model_json_schema()}, description="Role is exist")
 @openapi.response(status=401, content={"application/json": serializers.TokenExpiedResponse.model_json_schema()}, description="Token expied")
@@ -271,7 +274,7 @@ async def admin_delete_roles_permissions(request: Request, body: serializers.Adm
     user_id = request.ctx.user['user_id']
     user = await User.get(id=user_id)
     Logger.info(f"[Admin] - Role [{roles_model.role_name}] remove permission [{permissions_model.permission_title}]")
-    new_log = Log(user = user, api = request.uri_template, action = f"Role [{roles_model.role_name}] remove permission [{permissions_model.permission_title}]", ip = request.ctx.real_ip, ua = request.ctx.ua, level = LOG_LEVEL_MIDIUM)
+    new_log = Log(user = user, api = request.uri_template, action = f"Role [{roles_model.role_name}] remove permission [{permissions_model.permission_title}]", ip = request.ctx.real_ip, ua = request.ctx.ua, level = LogLevel.MIDIUM)
     await new_log.save()
 
     response = serializers.AdminDeleteRolesPermissionsSuccessfullyResponse().model_dump()
