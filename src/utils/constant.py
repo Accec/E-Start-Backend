@@ -1,8 +1,8 @@
 from enum import IntEnum
 
 class UserStatus(IntEnum):
-    INACTIVE = 0
-    ACTIVE = 1
+    INACTIVE = -1
+    ACTIVE = 0
 
 class LogLevel(IntEnum):
     HIGH = 3

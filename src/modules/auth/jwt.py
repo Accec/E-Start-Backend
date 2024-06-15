@@ -5,7 +5,7 @@ import datetime
 
 from sanic import router
 
-from utils.constant import LogLevel, USER_PERMISSIONS_KEY, ENDPOINT_PERMISSIONS_KEY
+from utils.constant import LogLevel, UserStatus, USER_PERMISSIONS_KEY, ENDPOINT_PERMISSIONS_KEY
 from utils.response import AuthorizedError, TokenError
 from utils.util import http_response
 
@@ -80,6 +80,9 @@ class JwtAuth:
 
         # 如果缓存中没有，从数据库查询
         user = await User.get(id=user_id)
+        if user.status == UserStatus.INACTIVE:
+            return False
+        
         roles = await user.roles.all()
 
         role_permissions = await asyncio.gather(*(role.permissions.all() for role in roles))
@@ -111,6 +114,11 @@ class JwtAuth:
                     if permissions:
                         user_id = int(request.ctx.user['user_id'])
                         user_permissions = await self.get_user_permissions(user_id)
+                        if user_permissions == False:
+                            user = await User.get(id=user_id)
+                            new_log = Log(user = user, api = endpoint, action = "Privilege escalation", ip = request.ctx.real_ip, ua = request.ctx.ua, level = LogLevel.HIGH)
+                            await new_log.save()
+                            return http_response(AuthorizedError.code, AuthorizedError.msg, status=403)
 
                         if not all(perm in user_permissions for perm in permissions):
                             user = await User.get(id=user_id)

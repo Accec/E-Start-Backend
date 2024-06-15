@@ -6,6 +6,7 @@ class UserGetDashboardUserModel(BaseModel):
     id: int
     account: str
     open_id: str
+    status: int
 
 class UserGetDashboardRolesModel(BaseModel):
     id: int

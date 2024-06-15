@@ -12,6 +12,7 @@ class UsersModel(BaseModel):
     id: Optional[int] = None
     account: Optional[str] = None
     open_id: Optional[str] = None
+    status: Optional[int] = None
     roles: Optional[RolesModel] = None
 
 class AdminGetUsersQuery(BaseModel):
