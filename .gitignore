@@ -1,0 +1,17 @@
+.vscode/
+dump.rdb
+
+*.pyc
+*.log
+__pycache__/
+
+.vscode
+venv
+uploads/
+src/logs/
+test/
+
+src/config/*
+!src/config/sample.py
+!src/config/base.py
+!src/config/__init__.py
