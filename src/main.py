@@ -2,7 +2,6 @@ import config
 from utils.logger import Logger
 from utils.create_app import create_app
 
-
 from utils.constant import API_LOGGER, TASK_LOGGER, JOB_LOGGER, SERVER_LOGGER, SCHEDULER_LOGGER
 
 Config = config.Config()

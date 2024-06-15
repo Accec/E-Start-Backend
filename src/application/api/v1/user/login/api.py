@@ -4,7 +4,7 @@ from utils.constant import LogLevel, UserStatus
 from utils.constant import API_LOGGER
 
 from sanic.request import Request
-from sanic_ext import validate, openapi
+from sanic_ext import validate
 
 from . import serializers
 
@@ -22,14 +22,6 @@ JwtAuth = jwt.JwtAuth()
 Logger = logging.getLogger(API_LOGGER)
 
 @UserBlueprint.post("/login")
-@openapi.summary("User Login")
-@openapi.description("Allows users to authenticate by providing account credentials. Returns a JWT token upon successful authentication.")
-@openapi.body({"application/json": serializers.UserPostLoginBody.model_json_schema()})
-@openapi.response(status=200, content={"application/json": serializers.UserPostLoginBody.model_json_schema()}, description="Successfully")
-@openapi.response(status=400, content={"application/json": serializers.ArgsInvalidResponse.model_json_schema()}, description="Args invalid")
-@openapi.response(status=401, content={"application/json": serializers.AccountOrPasswordInvalidResponse.model_json_schema()}, description="Account or password_invalid")
-@openapi.response(status=429, content={"application/json": serializers.RateLimitResponse.model_json_schema()}, description="Rate limit")
-@openapi.response(status=500, content={"application/json": serializers.RequestErrorResponse.model_json_schema()}, description="Request error")
 @rate_limit(5, 60)
 @validate(json=serializers.UserPostLoginBody)
 async def user_post_login(request: Request, body: serializers.UserPostLoginBody):

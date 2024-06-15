@@ -4,7 +4,7 @@ from utils.constant import API_LOGGER
 from utils.constant import LogLevel
 
 from sanic.request import Request
-from sanic_ext import validate, openapi
+from sanic_ext import validate
 
 from . import serializers
 from models import User, Log, Permission
@@ -19,19 +19,6 @@ Logger = logging.getLogger(API_LOGGER)
 
 
 @AdminBlueprint.get("/permissions")
-@openapi.summary("permissions")
-@openapi.description("permissions")
-@openapi.secured("token")
-@openapi.parameter(name="id", required=False, schema={"id": "int"})
-@openapi.parameter(name="permission_title", required=False, schema={"permission_title": "str"})
-@openapi.parameter(name="page", required=False, schema={"page": "int"})
-@openapi.parameter(name="page_size", required=False, schema={"page_size": "int"})
-@openapi.response(status=200, content={"application/json": serializers.AdminGetPermissionsSuccessfullyResponse.model_json_schema()}, description="Successfully")
-@openapi.response(status=400, content={"application/json": serializers.ArgsInvalidResponse.model_json_schema()}, description="Args invalid")
-@openapi.response(status=401, content={"application/json": serializers.TokenExpiedResponse.model_json_schema()}, description="Token expied")
-@openapi.response(status=403, content={"application/json": serializers.AuthorizedErrorResponse.model_json_schema()}, description="Authorized error")
-@openapi.response(status=500, content={"application/json": serializers.RequestErrorResponse.model_json_schema()}, description="Request error")
-@openapi.response(status=429, content={"application/json": serializers.RateLimitResponse.model_json_schema()}, description="Rate limit")
 @validate(query=serializers.AdminGetPermissionsQuery)
 @JwtAuth.permissions_authorized()
 async def admin_get_permissions(request: Request, query: serializers.AdminGetPermissionsQuery):
@@ -57,16 +44,6 @@ async def admin_get_permissions(request: Request, query: serializers.AdminGetPer
 
 
 @AdminBlueprint.post("/permissions")
-@openapi.summary("permissions")
-@openapi.description("permissions")
-@openapi.secured("token")
-@openapi.body({"application/json": serializers.AdminPostPermissionsBody.model_json_schema()})
-@openapi.response(status=201, content={"application/json": serializers.AdminPostPermissionsSuccessfullyResponse.model_json_schema()}, description="Successfully")
-@openapi.response(status=400, content={"application/json": serializers.ArgsInvalidResponse.model_json_schema()}, description="Role is exist")
-@openapi.response(status=401, content={"application/json": serializers.TokenExpiedResponse.model_json_schema()}, description="Token expied")
-@openapi.response(status=403, content={"application/json": serializers.AuthorizedErrorResponse.model_json_schema()}, description="Authorized error")
-@openapi.response(status=500, content={"application/json": serializers.RequestErrorResponse.model_json_schema()}, description="Request error")
-@openapi.response(status=429, content={"application/json": serializers.RateLimitResponse.model_json_schema()}, description="Rate limit")
 @validate(json=serializers.AdminPostPermissionsBody)
 @JwtAuth.permissions_authorized()
 async def admin_post_permissions(request: Request, body: serializers.AdminPostPermissionsBody):
@@ -89,16 +66,6 @@ async def admin_post_permissions(request: Request, body: serializers.AdminPostPe
 
 
 @AdminBlueprint.delete("/permissions")
-@openapi.summary("permissions")
-@openapi.description("permissions")
-@openapi.secured("token")
-@openapi.body({"application/json": serializers.AdminDeletePermissionsBody.model_json_schema()})
-@openapi.response(status=204, content={"application/json": serializers.AdminDeletePermissionsSuccessfullyResponse.model_json_schema()}, description="Successfully")
-@openapi.response(status=400, content={"application/json": serializers.ArgsInvalidResponse.model_json_schema()}, description="Role is not exist")
-@openapi.response(status=401, content={"application/json": serializers.TokenExpiedResponse.model_json_schema()}, description="Token expied")
-@openapi.response(status=403, content={"application/json": serializers.AuthorizedErrorResponse.model_json_schema()}, description="Authorized error")
-@openapi.response(status=500, content={"application/json": serializers.RequestErrorResponse.model_json_schema()}, description="Request error")
-@openapi.response(status=429, content={"application/json": serializers.RateLimitResponse.model_json_schema()}, description="Rate limit")
 @validate(json=serializers.AdminDeletePermissionsBody)
 @JwtAuth.permissions_authorized()
 async def admin_delete_permissions(request: Request, query: serializers.AdminDeletePermissionsBody):
@@ -126,16 +93,6 @@ async def admin_delete_permissions(request: Request, query: serializers.AdminDel
 
 
 @AdminBlueprint.put("/permissions")
-@openapi.summary("permissions")
-@openapi.description("permissions")
-@openapi.secured("token")
-@openapi.body({"application/json": serializers.AdminPutPermissionsBody.model_json_schema()})
-@openapi.response(status=201, content={"application/json": serializers.AdminPutPermissionsBody.model_json_schema()}, description="Successfully")
-@openapi.response(status=400, content={"application/json": serializers.ArgsInvalidResponse.model_json_schema()}, description="Role is exist")
-@openapi.response(status=401, content={"application/json": serializers.TokenExpiedResponse.model_json_schema()}, description="Token expied")
-@openapi.response(status=403, content={"application/json": serializers.AuthorizedErrorResponse.model_json_schema()}, description="Authorized error")
-@openapi.response(status=500, content={"application/json": serializers.RequestErrorResponse.model_json_schema()}, description="Request error")
-@openapi.response(status=429, content={"application/json": serializers.RateLimitResponse.model_json_schema()}, description="Rate limit")
 @validate(json=serializers.AdminPutPermissionsBody)
 @JwtAuth.permissions_authorized()
 async def admin_put_permissions(request: Request, body: serializers.AdminPutPermissionsBody):

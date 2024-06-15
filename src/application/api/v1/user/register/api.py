@@ -3,7 +3,7 @@ from utils.constant import ROLE_USER
 from utils.constant import API_LOGGER
 from utils.router import UserBlueprint
 from utils.util import http_response
-from sanic_ext import validate, openapi
+from sanic_ext import validate
 
 from sanic.request import Request
 
@@ -20,13 +20,6 @@ import logging
 Logger = logging.getLogger(API_LOGGER)
 
 @UserBlueprint.post("/register")
-@openapi.summary("Register")
-@openapi.description("Register")
-@openapi.body({"application/json": serializers.UserPostRegisterBody.model_json_schema()})
-@openapi.response(status=201, content={"application/json": serializers.UserPostLoginSuccessfullyResponse.model_json_schema()}, description="Successfully")
-@openapi.response(status=400, content={"ArgsInvalidResponse": serializers.ArgsInvalidResponse.model_json_schema(), "UserExistResponse": serializers.UserExistResponse.model_json_schema()}, description="Args invalid | The account is exist")
-@openapi.response(status=500, content={"application/json": serializers.RequestErrorResponse.model_json_schema()}, description="Request error")
-@openapi.response(status=429, content={"application/json": serializers.RateLimitResponse.model_json_schema()}, description="Rate limit")
 @rate_limit(5, 60)
 @validate(json=serializers.UserPostRegisterBody)
 async def user_post_register(request: Request, body: serializers.UserPostRegisterBody):
