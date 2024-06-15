@@ -1,7 +1,3 @@
-<<<<<<< HEAD
-# E-Start-Backend
-A faster and easy web backend framework.
-=======
 # E-Starter
 
 E-Starter is a simple and easy-to-use backend framework designed for small to medium-sized projects. It provides a robust starting point for developers looking to jumpstart their application development without dealing with complex configurations.
@@ -76,4 +72,3 @@ Distributed under the MIT License. See `LICENSE` for more information.
 Github - [@Accec](https://github.com/Accec)
 
 Project Link: [https://github.com/Accec/E-Start-Backend](https://github.com/Accec/E-Start-Backend)
->>>>>>> dev
