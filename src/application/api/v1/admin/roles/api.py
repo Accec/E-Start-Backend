@@ -2,6 +2,7 @@ from utils.router import AdminBlueprint
 from utils.util import http_response
 from utils.constant import API_LOGGER
 from utils.constant import LogLevel
+from utils.constant import HTTP_STATUS_OK, HTTP_STATUS_INVALID_REQUEST, HTTP_STATUS_CREATED, HTTP_STATUS_NO_CONTENT
 
 from sanic.request import Request
 from sanic_ext import validate
@@ -41,7 +42,7 @@ async def admin_get_roles(request: Request, query: serializers.AdminGetRolesQuer
 
     response = serializers.AdminGetRolesSuccessfullyResponse(result=results, total_items=paginator.total_items, total_pages=paginator.total_pages).model_dump()
     
-    return http_response(status = 200, **response)
+    return http_response(status = HTTP_STATUS_OK, **response)
 
 
 
@@ -51,7 +52,7 @@ async def admin_get_roles(request: Request, query: serializers.AdminGetRolesQuer
 async def admin_post_roles(request: Request, body: serializers.AdminPostRolesBody):
     if await Role.exists(role_name=body.role_name):
         response = serializers.ArgsInvalidResponse().model_dump()
-        return http_response(status=400, **response)
+        return http_response(status=HTTP_STATUS_INVALID_REQUEST, **response)
     
     new_role = Role(role_name=body.role_name)
     await new_role.save()
@@ -63,7 +64,7 @@ async def admin_post_roles(request: Request, body: serializers.AdminPostRolesBod
     await new_log.save()
 
     response = serializers.AdminPostRolesSuccessfullyResponse().model_dump()
-    return http_response(status=201, **response)
+    return http_response(status=HTTP_STATUS_CREATED, **response)
 
 
 
@@ -75,11 +76,11 @@ async def admin_delete_roles(request: Request, query: serializers.AdminDeleteRol
     role_model = role_model.model_dump(exclude_none = True, exclude_defaults = True, exclude_unset=True)
     if not role_model:
         response = serializers.ArgsInvalidResponse().model_dump()
-        return http_response(status = 400, **response)
+        return http_response(status = HTTP_STATUS_INVALID_REQUEST, **response)
     roles_model = Role.filter(**role_model)
     if not await roles_model.exists():
         response = serializers.ArgsInvalidResponse().model_dump()
-        return http_response(status = 400, **response)
+        return http_response(status = HTTP_STATUS_INVALID_REQUEST, **response)
     
     await roles_model.delete()
     # create log
@@ -90,7 +91,7 @@ async def admin_delete_roles(request: Request, query: serializers.AdminDeleteRol
     await new_log.save()
 
     response = serializers.AdminDeleteRolesSuccessfullyResponse().model_dump()
-    return http_response(status = 204, **response)
+    return http_response(status = HTTP_STATUS_NO_CONTENT, **response)
 
 
 
@@ -101,7 +102,7 @@ async def admin_put_roles(request: Request, body: serializers.AdminPutRolesBody)
     roles_model = Role.filter(id = body.id)
     if not await roles_model.exists():
         response = serializers.ArgsInvalidResponse().model_dump()
-        return http_response(status = 400, **response)
+        return http_response(status = HTTP_STATUS_INVALID_REQUEST, **response)
     
     old_role_name = await roles_model.first()
     old_role_name = old_role_name.role_name
@@ -115,7 +116,7 @@ async def admin_put_roles(request: Request, body: serializers.AdminPutRolesBody)
     await new_log.save()
 
     response = serializers.AdminPutRolesSuccessfullyResponse().model_dump()
-    return http_response(status = 201, **response)
+    return http_response(status = HTTP_STATUS_CREATED, **response)
 
 
 
@@ -131,11 +132,11 @@ async def admin_post_roles_permissions(request: Request, body: serializers.Admin
         roles_model = Role.filter(role_name=body.role_name)
     else:
         response = serializers.ArgsInvalidResponse().model_dump()
-        return http_response(status = 400, **response)
+        return http_response(status = HTTP_STATUS_INVALID_REQUEST, **response)
     
     if not await roles_model.exists():
         response = serializers.ArgsInvalidResponse().model_dump()
-        return http_response(status = 400, **response)
+        return http_response(status = HTTP_STATUS_INVALID_REQUEST, **response)
 
     permissions_model = serializers.PermissionsModel.model_validate(body.permissions, from_attributes=True)
     permissions_model = permissions_model.model_dump(exclude_none = True, exclude_defaults = True, exclude_unset=True)
@@ -143,18 +144,18 @@ async def admin_post_roles_permissions(request: Request, body: serializers.Admin
         permissions_model = Permission.filter(**permissions_model)
     else:
         response = serializers.ArgsInvalidResponse().model_dump()
-        return http_response(status = 400, **response)
+        return http_response(status = HTTP_STATUS_INVALID_REQUEST, **response)
     
     if not await permissions_model.exists():
         response = serializers.ArgsInvalidResponse().model_dump()
-        return http_response(status = 400, **response)
+        return http_response(status = HTTP_STATUS_INVALID_REQUEST, **response)
     
     roles_model = await roles_model.first()
     permissions_model = await permissions_model.first()
 
     if permissions_model in await roles_model.permissions:
         response = serializers.ArgsInvalidResponse().model_dump()
-        return http_response(status = 400, **response)
+        return http_response(status = HTTP_STATUS_INVALID_REQUEST, **response)
     
     await roles_model.permissions.add(permissions_model)
 
@@ -165,7 +166,7 @@ async def admin_post_roles_permissions(request: Request, body: serializers.Admin
     await new_log.save()
 
     response = serializers.AdminPostRolesPermissionsSuccessfullyResponse().model_dump()
-    return http_response(status = 201, **response)
+    return http_response(status = HTTP_STATUS_CREATED, **response)
 
 
 
@@ -181,11 +182,11 @@ async def admin_delete_roles_permissions(request: Request, body: serializers.Adm
         roles_model = Role.filter(role_name=body.role_name)
     else:
         response = serializers.ArgsInvalidResponse().model_dump()
-        return http_response(status = 400, **response)
+        return http_response(status = HTTP_STATUS_INVALID_REQUEST, **response)
     
     if not await roles_model.exists():
         response = serializers.ArgsInvalidResponse().model_dump()
-        return http_response(status = 400, **response)
+        return http_response(status = HTTP_STATUS_INVALID_REQUEST, **response)
 
     permissions_model = serializers.PermissionsModel.model_validate(body.permissions, from_attributes=True)
     permissions_model = permissions_model.model_dump(exclude_none = True, exclude_defaults = True, exclude_unset=True)
@@ -193,18 +194,18 @@ async def admin_delete_roles_permissions(request: Request, body: serializers.Adm
         permissions_model = Permission.filter(**permissions_model)
     else:
         response = serializers.ArgsInvalidResponse().model_dump()
-        return http_response(status = 400, **response)
+        return http_response(status = HTTP_STATUS_INVALID_REQUEST, **response)
     
     if not await permissions_model.exists():
         response = serializers.ArgsInvalidResponse().model_dump()
-        return http_response(status = 400, **response)
+        return http_response(status = HTTP_STATUS_INVALID_REQUEST, **response)
     
     roles_model = await roles_model.first()
     permissions_model = await permissions_model.first()
 
     if permissions_model in await roles_model.permissions:
         response = serializers.ArgsInvalidResponse().model_dump()
-        return http_response(status = 400, **response)
+        return http_response(status = HTTP_STATUS_INVALID_REQUEST, **response)
     
     await roles_model.permissions.remove(permissions_model)
 
@@ -215,4 +216,4 @@ async def admin_delete_roles_permissions(request: Request, body: serializers.Adm
     await new_log.save()
 
     response = serializers.AdminDeleteRolesPermissionsSuccessfullyResponse().model_dump()
-    return http_response(status = 204, **response)
+    return http_response(status = HTTP_STATUS_NO_CONTENT, **response)

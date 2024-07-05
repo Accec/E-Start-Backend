@@ -2,6 +2,8 @@ from utils.router import UserBlueprint
 from utils.util import http_response
 from utils.constant import LogLevel, UserStatus
 from utils.constant import API_LOGGER
+from utils.constant import HTTP_STATUS_OK, HTTP_STATUS_UNAUTHORIZED
+
 
 from sanic.request import Request
 from sanic_ext import validate
@@ -28,7 +30,7 @@ async def user_post_login(request: Request, body: serializers.UserPostLoginBody)
     user = await User.get_or_none(account=body.account)
     if not user:
         response = serializers.AccountOrPasswordInvalidResponse().model_dump()
-        return http_response(status = 401, **response)
+        return http_response(status = HTTP_STATUS_UNAUTHORIZED, **response)
         
     log = Log(user = user, api = request.uri_template, ip = request.ctx.real_ip, ua = request.ctx.ua)
 
@@ -38,14 +40,14 @@ async def user_post_login(request: Request, body: serializers.UserPostLoginBody)
         log.level = LogLevel.MIDIUM
         await log.save()
         response = serializers.AccountOrPasswordInvalidResponse().model_dump()
-        return http_response(status = 401, **response)
+        return http_response(status = HTTP_STATUS_UNAUTHORIZED, **response)
     
     if user.status == UserStatus.INACTIVE:
         log.action = "Ban"
         log.level = LogLevel.MIDIUM
         await log.save()
         response = serializers.AccountOrPasswordInvalidResponse().model_dump()
-        return http_response(status = 401, **response)
+        return http_response(status = HTTP_STATUS_UNAUTHORIZED, **response)
     
     log.action = "Login successfully!"
     log.level = LogLevel.MIDIUM
@@ -54,4 +56,4 @@ async def user_post_login(request: Request, body: serializers.UserPostLoginBody)
     token = JwtAuth.encode_jwt(user.id, Config.JwtExpTime)
 
     response = serializers.UserPostLoginSuccessfullyResponse(token = token).model_dump()
-    return http_response(status=200, **response)
+    return http_response(status=HTTP_STATUS_OK, **response)

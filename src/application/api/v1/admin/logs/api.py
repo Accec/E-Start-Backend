@@ -1,5 +1,6 @@
 from utils.router import AdminBlueprint
 from utils.util import http_response
+from utils.constant import HTTP_STATUS_OK
 
 from sanic.request import Request
 from sanic_ext import validate
@@ -29,4 +30,4 @@ async def admin_get_logs(request: Request, query: serializers.AdminGetLogsQuery)
     result = [serializers.AdminGetLogModel.model_validate(item, from_attributes=True) for item in paginator.items]
     response = serializers.AdminGetLogsSuccessfullyResponse(result=result, total_items=paginator.total_items, total_pages=paginator.total_pages).model_dump()
 
-    return http_response(status = 200, **response)
+    return http_response(status = HTTP_STATUS_OK, **response)
