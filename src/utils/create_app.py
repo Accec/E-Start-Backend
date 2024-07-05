@@ -6,8 +6,6 @@ from application import api
 
 from tortoise.contrib.sanic import register_tortoise
 
-from models import Log
-
 import importlib
 import config
 import logging
@@ -42,13 +40,6 @@ def create_app():
             'use_tz': True,
         }
 
-    cwd = os.getcwd().replace('\\','/')
-
-    if Config.RelativePath == True:
-        Config.UploadsPath = f"{cwd}/{Config.UploadsPath}"
-        Config.LogsPath = f"{cwd}/{Config.LogsPath}"
-
-    
     os.environ['LOG_PATH'] = Config.LogsPath
 
     server.config.SERVER_NAME = f"{Config.SanicHost}:{Config.SanicPort}"
