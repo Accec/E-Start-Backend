@@ -74,7 +74,7 @@ class PaginatorSettings(BaseModel):
 class AdminGetUsersSuccessfullyResponse(BaseModel):
     code: int = Field(default=Successfully.code)
     msg: str = Field(default=Successfully.msg)
-    result: Optional[Union[List[UsersModel], list]] = Field(default=None)
+    result: Optional[Union[List[UsersModel]]] = Field(default=None)
     total_items: int
     total_pages: int
 

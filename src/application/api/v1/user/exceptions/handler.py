@@ -11,6 +11,3 @@ from utils.constant import HTTP_STATUS_SERVER_ERROR
 @UserBlueprint.exception(ValidationError)
 async def validation_error(request: Request, exception: ValidationError):
     return http_response(ArgsInvalidError.code, ArgsInvalidError.msg, exception.message, status=HTTP_STATUS_SERVER_ERROR)
-
-
-

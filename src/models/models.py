@@ -7,7 +7,7 @@ from utils.constant import LogLevel, UserStatus
 class Log(Model):
     id = fields.BigIntField(pk = True, description = "ID")
 
-    user = fields.ForeignKeyField("e-starter.User", related_name="log", on_delete=fields.CASCADE)
+    user = fields.ForeignKeyField("e-starter.User", related_name="logs", on_delete=fields.CASCADE)
 
     api = fields.CharField(max_length=512, index = True, description = "接口URI")
     action = fields.CharField(max_length=512, index = True, description = "行为描述")

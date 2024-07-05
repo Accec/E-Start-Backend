@@ -42,7 +42,7 @@ async def admin_get_users(request: Request, query: serializers.AdminGetUsersQuer
         roles = [serializers.RolesModel.model_validate(item, from_attributes=True) for item in await item.roles]
         result.roles = roles
         results.append(result)
-
+    
     response = serializers.AdminGetUsersSuccessfullyResponse(result=results, total_items=paginator.total_items, total_pages=paginator.total_pages).model_dump()
 
     return http_response(status = HTTP_STATUS_OK, **response)
