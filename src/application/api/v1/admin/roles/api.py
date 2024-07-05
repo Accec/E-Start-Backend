@@ -71,8 +71,8 @@ async def admin_post_roles(request: Request, body: serializers.AdminPostRolesBod
 @AdminBlueprint.delete("/roles")
 @validate(json=serializers.AdminDeleteRolesBody)
 @JwtAuth.permissions_authorized()
-async def admin_delete_roles(request: Request, query: serializers.AdminDeleteRolesBody):
-    role_model = serializers.RolesModel.model_validate(query, from_attributes=True)
+async def admin_delete_roles(request: Request, body: serializers.AdminDeleteRolesBody):
+    role_model = serializers.RolesModel.model_validate(body, from_attributes=True)
     role_model = role_model.model_dump(exclude_none = True, exclude_defaults = True, exclude_unset=True)
     if not role_model:
         response = serializers.ArgsInvalidResponse().model_dump()
@@ -90,8 +90,7 @@ async def admin_delete_roles(request: Request, query: serializers.AdminDeleteRol
     new_log = Log(user = user, api = request.uri_template, action = f"Role [{role_model}] is deleted", ip = request.ctx.real_ip, ua = request.ctx.ua, level = LogLevel.MIDIUM)
     await new_log.save()
 
-    response = serializers.AdminDeleteRolesSuccessfullyResponse().model_dump()
-    return http_response(status = HTTP_STATUS_NO_CONTENT, **response)
+    return http_response(status = HTTP_STATUS_NO_CONTENT)
 
 
 
@@ -215,5 +214,4 @@ async def admin_delete_roles_permissions(request: Request, body: serializers.Adm
     new_log = Log(user = user, api = request.uri_template, action = f"Role [{roles_model.role_name}] remove permission [{permissions_model.permission_title}]", ip = request.ctx.real_ip, ua = request.ctx.ua, level = LogLevel.MIDIUM)
     await new_log.save()
 
-    response = serializers.AdminDeleteRolesPermissionsSuccessfullyResponse().model_dump()
-    return http_response(status = HTTP_STATUS_NO_CONTENT, **response)
+    return http_response(status = HTTP_STATUS_NO_CONTENT)

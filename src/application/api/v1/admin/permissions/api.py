@@ -69,8 +69,8 @@ async def admin_post_permissions(request: Request, body: serializers.AdminPostPe
 @AdminBlueprint.delete("/permissions")
 @validate(json=serializers.AdminDeletePermissionsBody)
 @JwtAuth.permissions_authorized()
-async def admin_delete_permissions(request: Request, query: serializers.AdminDeletePermissionsBody):
-    permission_model = serializers.PermissionsModel.model_validate(query, from_attributes=True)
+async def admin_delete_permissions(request: Request, body: serializers.AdminDeletePermissionsBody):
+    permission_model = serializers.PermissionsModel.model_validate(body, from_attributes=True)
     permission_model = permission_model.model_dump(exclude_none = True, exclude_defaults = True, exclude_unset=True)
     if not permission_model:
         response = serializers.ArgsInvalidResponse().model_dump()
@@ -88,8 +88,7 @@ async def admin_delete_permissions(request: Request, query: serializers.AdminDel
     new_log = Log(user = user, api = request.uri_template, action = f"Permission [{permission_model}] is deleted", ip = request.ctx.real_ip, ua = request.ctx.ua, level = LogLevel.MIDIUM)
     await new_log.save()
 
-    response = serializers.AdminDeletePermissionsSuccessfullyResponse().model_dump()
-    return http_response(status = HTTP_STATUS_NO_CONTENT, **response)
+    return http_response(status = HTTP_STATUS_NO_CONTENT)
 
 
 

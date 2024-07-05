@@ -193,5 +193,4 @@ async def admin_delete_users_roles(request: Request, body: serializers.AdminDele
     new_log = Log(user = user, api = request.uri_template, action = f"User [{users_model.account}] remove Role [{roles_model.role_name}]", ip = request.ctx.real_ip, ua = request.ctx.ua, level = LogLevel.MIDIUM)
     await new_log.save()
 
-    response = serializers.AdminDeleteUsersRolesSuccessfullyResponse().model_dump()
-    return http_response(status = HTTP_STATUS_NO_CONTENT, **response)
+    return http_response(status = HTTP_STATUS_NO_CONTENT)

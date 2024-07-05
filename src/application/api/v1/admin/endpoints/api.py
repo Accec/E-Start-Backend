@@ -98,7 +98,7 @@ async def admin_post_endpoints_permissions(request: Request, body: serializers.A
 
 
 @AdminBlueprint.delete("/endpoints/permissions")
-@validate(json=serializers.AdminDeleteEndpointsPermissionsSuccessfullyResponse)
+@validate(json=serializers.AdminDeleteEndpointsPermissionsBody)
 @JwtAuth.permissions_authorized()
 async def admin_delete_endpoints_permissions(request: Request, body: serializers.AdminDeleteEndpointsPermissionsBody):
     if body.id and body.endpoint:
@@ -142,5 +142,4 @@ async def admin_delete_endpoints_permissions(request: Request, body: serializers
     new_log = Log(user = user, api = request.uri_template, action = f"Endpoint [{endpoints_model.endpoint}] remove permission [{permissions_model.permission_title}]", ip = request.ctx.real_ip, ua = request.ctx.ua, level = LogLevel.MIDIUM)
     await new_log.save()
 
-    response = serializers.AdminDeleteEndpointsPermissionsSuccessfullyResponse().model_dump()
-    return http_response(status = HTTP_STATUS_NO_CONTENT, **response)
+    return http_response(status = HTTP_STATUS_NO_CONTENT)

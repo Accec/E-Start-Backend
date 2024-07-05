@@ -47,19 +47,14 @@ class PaginatorSettings(BaseModel):
 class AdminGetEndpointsSuccessfullyResponse(BaseModel):
     code: int = Field(default=Successfully.code)
     msg: str = Field(default=Successfully.msg)
-    result: Optional[Union[list, List[EndpointsModel]]]
+    result: Optional[List[EndpointsModel]]
     total_items: int
     total_pages: int
 
 class AdminPostEndpointsPermissionsSuccessfullyResponse(BaseModel):
     code: int = Field(default=Successfully.code)
     msg: str = Field(default=Successfully.msg)
-    result: Optional[Union[list, List[EndpointsModel]]]
-
-class AdminDeleteEndpointsPermissionsSuccessfullyResponse(BaseModel):
-    code: int = Field(default=Successfully.code)
-    msg: str = Field(default=Successfully.msg)
-    result: Optional[Union[list, List[EndpointsModel]]]
+    result: Optional[List[EndpointsModel]]
 
 class RequestErrorResponse(BaseModel):
     code: int = Field(default=RequestError.code)

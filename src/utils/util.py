@@ -37,7 +37,9 @@ class Paginator:
     def total_items(self):
         return self._total_items
 
-def http_response(code, msg='', result=None, status=200, **kwargs):
+def http_response(code=None, msg=None, result=None, status=200, **kwargs):
+    if not code and not msg:
+        return response.HTTPResponse(status=status)
     output = {'code': code, 'msg': msg, 'results': result}
     if kwargs:
         output.update(kwargs)

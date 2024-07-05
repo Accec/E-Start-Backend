@@ -30,24 +30,19 @@ class PaginatorSettings(BaseModel):
 class AdminGetPermissionsSuccessfullyResponse(BaseModel):
     code: int = Field(default=Successfully.code)
     msg: str = Field(default=Successfully.msg)
-    result: Optional[Union[PermissionsModel, list]] = Field(default=None)
+    result: Optional[List[PermissionsModel]] = Field(default=None)
     total_items: int
     total_pages: int
 
 class AdminPostPermissionsSuccessfullyResponse(BaseModel):
     code: int = Field(default=Successfully.code)
     msg: str = Field(default=Successfully.msg)
-    result: Optional[Union[PermissionsModel, list]] = Field(default=None)
-
-class AdminDeletePermissionsSuccessfullyResponse(BaseModel):
-    code: int = Field(default=Successfully.code)
-    msg: str = Field(default=Successfully.msg)
-    result: Optional[Union[PermissionsModel, list]] = Field(default=None)
+    result: Optional[List[PermissionsModel]] = Field(default=None)
 
 class AdminPutPermissionsSuccessfullyResponse(BaseModel):
     code: int = Field(default=Successfully.code)
     msg: str = Field(default=Successfully.msg)
-    result: Optional[Union[PermissionsModel, list]] = Field(default=None)
+    result: Optional[List[PermissionsModel]] = Field(default=None)
 
 class RequestErrorResponse(BaseModel):
     code: int = Field(default=RequestError.code)

@@ -74,29 +74,24 @@ class PaginatorSettings(BaseModel):
 class AdminGetUsersSuccessfullyResponse(BaseModel):
     code: int = Field(default=Successfully.code)
     msg: str = Field(default=Successfully.msg)
-    result: Optional[Union[List[UsersModel]]] = Field(default=None)
+    result: Optional[List[UsersModel]] = Field(default=None)
     total_items: int
     total_pages: int
 
 class AdminPostUsersSuccessfullyResponse(BaseModel):
     code: int = Field(default=Successfully.code)
     msg: str = Field(default=Successfully.msg)
-    result: Optional[Union[List[UsersModel], list]] = Field(default=None)
+    result: Optional[List[UsersModel]] = Field(default=None)
 
 class AdminPutUsersSuccessfullyResponse(BaseModel):
     code: int = Field(default=Successfully.code)
     msg: str = Field(default=Successfully.msg)
-    result: Optional[Union[List[UsersModel], list]] = Field(default=None)
+    result: Optional[List[UsersModel]] = Field(default=None)
 
 class AdminPostUsersRolesSuccessfullyResponse(BaseModel):
     code: int = Field(default=Successfully.code)
     msg: str = Field(default=Successfully.msg)
-    result: Optional[Union[List[UsersModel], list]] = Field(default=None)
-
-class AdminDeleteUsersRolesSuccessfullyResponse(BaseModel):
-    code: int = Field(default=Successfully.code)
-    msg: str = Field(default=Successfully.msg)
-    result: Optional[Union[List[UsersModel], list]] = Field(default=None)
+    result: Optional[List[UsersModel]] = Field(default=None)
 
 class RequestErrorResponse(BaseModel):
     code: int = Field(default=RequestError.code)

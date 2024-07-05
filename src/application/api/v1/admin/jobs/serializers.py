@@ -22,7 +22,7 @@ class AdminGetJobsSuccessfullyResponse(BaseModel):
 class AdminPutJobsSuccessfullyResponse(BaseModel):
     code: int = Field(default=Successfully.code)
     msg: str = Field(default=Successfully.msg)
-    result: Optional[dict] = Field(default=None)
+    result: Optional[Dict[str, JobConfig]] = Field(default=None)
 
 
 class RequestErrorResponse(BaseModel):

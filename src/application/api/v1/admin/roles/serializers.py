@@ -45,35 +45,24 @@ class PaginatorSettings(BaseModel):
 class AdminGetRolesSuccessfullyResponse(BaseModel):
     code: int = Field(default=Successfully.code)
     msg: str = Field(default=Successfully.msg)
-    result: Optional[Union[RolesModel, list]] = Field(default=None)
+    result: Optional[List[RolesModel]] = Field(default=None)
     total_items: int
     total_pages: int
 
 class AdminPostRolesSuccessfullyResponse(BaseModel):
     code: int = Field(default=Successfully.code)
     msg: str = Field(default=Successfully.msg)
-    result: Optional[Union[RolesModel, list]] = Field(default=None)
+    result: Optional[List[RolesModel]] = Field(default=None)
 
 class AdminPostRolesPermissionsSuccessfullyResponse(BaseModel):
     code: int = Field(default=Successfully.code)
     msg: str = Field(default=Successfully.msg)
-    result: Optional[Union[RolesModel, list]] = Field(default=None)
-
-class AdminDeleteRolesPermissionsSuccessfullyResponse(BaseModel):
-    code: int = Field(default=Successfully.code)
-    msg: str = Field(default=Successfully.msg)
-    result: Optional[Union[RolesModel, list]] = Field(default=None)
-
-
-class AdminDeleteRolesSuccessfullyResponse(BaseModel):
-    code: int = Field(default=Successfully.code)
-    msg: str = Field(default=Successfully.msg)
-    result: Optional[Union[RolesModel, list]] = Field(default=None)
+    result: Optional[List[RolesModel]] = Field(default=None)
 
 class AdminPutRolesSuccessfullyResponse(BaseModel):
     code: int = Field(default=Successfully.code)
     msg: str = Field(default=Successfully.msg)
-    result: Optional[Union[RolesModel, list]] = Field(default=None)
+    result: Optional[List[RolesModel]] = Field(default=None)
 
 class RequestErrorResponse(BaseModel):
     code: int = Field(default=RequestError.code)
