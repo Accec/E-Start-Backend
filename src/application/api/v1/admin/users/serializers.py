@@ -5,15 +5,15 @@ import re
 from sanic_ext.exceptions import ValidationError
 
 class RolesModel(BaseModel):
-    id: Optional[int] = None
-    role_name: Optional[str] = None
+    id: Optional[int] = Field(default=None)
+    role_name: Optional[str] = Field(default=None)
 
 class UsersModel(BaseModel):
-    id: Optional[int] = None
-    account: Optional[str] = None
-    open_id: Optional[str] = None
-    status: Optional[int] = None
-    roles: Optional[RolesModel] = None
+    id: Optional[int] = Field(default=None)
+    account: Optional[str] = Field(default=None)
+    open_id: Optional[str] = Field(default=None)
+    status: Optional[int] = Field(default=None)
+    roles: Optional[RolesModel] = Field(default=None)
 
 class AdminGetUsersQuery(BaseModel):
     id: Optional[int] = Field(default=None)
@@ -40,8 +40,9 @@ class AdminPostUsersBody(BaseModel):
         return value
     
 class AdminPutUsersBody(BaseModel):
-    account: Optional[str] = Field(min_length=5, max_length=20)
-    password: Optional[str] = Field(min_length=8, max_length=20)
+    id: Optional[int] = Field(default=None)
+    account: Optional[str] = Field(default=None, min_length=5, max_length=20)
+    password: Optional[str] = Field(default=None, min_length=8, max_length=20)
 
     @field_validator('account')
     @classmethod
@@ -58,14 +59,14 @@ class AdminPutUsersBody(BaseModel):
         return value
     
 class AdminPostUsersRolesBody(BaseModel):
-    id: Optional[int] = None
-    account: Optional[str] = None
-    roles: Optional[RolesModel] = None
+    id: Optional[int] = Field(default=None)
+    account: Optional[str] = Field(default=None)
+    roles: Optional[RolesModel] = Field(default=None)
 
 class AdminDeleteUsersRolesBody(BaseModel):
-    id: Optional[int] = None
-    account: Optional[str] = None
-    roles: Optional[RolesModel] = None
+    id: Optional[int] = Field(default=None)
+    account: Optional[str] = Field(default=None)
+    roles: Optional[RolesModel] = Field(default=None)
 
 class PaginatorSettings(BaseModel):
     page: int = Field(default=1)

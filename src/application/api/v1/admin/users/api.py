@@ -3,7 +3,7 @@ from utils.util import http_response, Paginator
 
 from utils.constant import API_LOGGER
 from utils.constant import LogLevel
-from utils.constant import HTTP_STATUS_OK, HTTP_STATUS_INVALID_REQUEST, HTTP_STATUS_CREATED, HTTP_STATUS_NO_CONTENT
+from utils.constant import HttpStatus
 
 from sanic.request import Request
 from sanic_ext import validate
@@ -45,7 +45,7 @@ async def admin_get_users(request: Request, query: serializers.AdminGetUsersQuer
     
     response = serializers.AdminGetUsersSuccessfullyResponse(result=results, total_items=paginator.total_items, total_pages=paginator.total_pages).model_dump()
 
-    return http_response(status = HTTP_STATUS_OK, **response)
+    return http_response(status = HttpStatus.OK, **response)
 
 
 
@@ -55,7 +55,7 @@ async def admin_get_users(request: Request, query: serializers.AdminGetUsersQuer
 async def admin_post_users(request: Request, body: serializers.AdminPostUsersBody):
     if await User.exists(account=body.account):
         response = serializers.ArgsInvalidResponse().model_dump()
-        return http_response(status=HTTP_STATUS_INVALID_REQUEST, **response)
+        return http_response(status=HttpStatus.INVALID_REQUEST, **response)
     
     open_id = generate_openid(body.account, str(datetime.datetime.now(datetime.UTC).timestamp() * 1000))
     hashed_password = hash_password(body.password) 
@@ -70,7 +70,7 @@ async def admin_post_users(request: Request, body: serializers.AdminPostUsersBod
     await new_log.save()
 
     response = serializers.AdminPostUsersSuccessfullyResponse().model_dump()
-    return http_response(status=HTTP_STATUS_CREATED, **response)
+    return http_response(status=HttpStatus.CREATED, **response)
 
 
 
@@ -81,7 +81,7 @@ async def admin_put_users(request: Request, body: serializers.AdminPutUsersBody)
     user_model = User.filter(id = body.id)
     if not await user_model.exists():
         response = serializers.ArgsInvalidResponse().model_dump()
-        return http_response(status = HTTP_STATUS_INVALID_REQUEST, **response)
+        return http_response(status = HttpStatus.INVALID_REQUEST, **response)
     
     old_user_model = user_model
 
@@ -94,7 +94,7 @@ async def admin_put_users(request: Request, body: serializers.AdminPutUsersBody)
     await new_log.save()
 
     response = serializers.AdminPutUsersSuccessfullyResponse().model_dump()
-    return http_response(status = HTTP_STATUS_CREATED, **response)
+    return http_response(status = HttpStatus.CREATED, **response)
 
 
 
@@ -110,11 +110,11 @@ async def admin_post_users_roles(request: Request, body: serializers.AdminPostUs
         users_model = User.filter(role_name=body.account)
     else:
         response = serializers.ArgsInvalidResponse().model_dump()
-        return http_response(status = HTTP_STATUS_INVALID_REQUEST, **response)
+        return http_response(status = HttpStatus.INVALID_REQUEST, **response)
     
     if not await users_model.exists():
         response = serializers.ArgsInvalidResponse().model_dump()
-        return http_response(status = HTTP_STATUS_INVALID_REQUEST, **response)
+        return http_response(status = HttpStatus.INVALID_REQUEST, **response)
 
     roles_model = serializers.RolesModel.model_validate(body.roles, from_attributes=True)
     roles_model = roles_model.model_dump(exclude_none = True, exclude_defaults = True, exclude_unset=True)
@@ -122,18 +122,18 @@ async def admin_post_users_roles(request: Request, body: serializers.AdminPostUs
         roles_model = Role.filter(**roles_model)
     else:
         response = serializers.ArgsInvalidResponse().model_dump()
-        return http_response(status = HTTP_STATUS_INVALID_REQUEST, **response)
+        return http_response(status = HttpStatus.INVALID_REQUEST, **response)
     
     if not await roles_model.exists():
         response = serializers.ArgsInvalidResponse().model_dump()
-        return http_response(status = HTTP_STATUS_INVALID_REQUEST, **response)
+        return http_response(status = HttpStatus.INVALID_REQUEST, **response)
     
     users_model = await users_model.first()
     roles_model = await roles_model.first()
 
     if roles_model in await users_model.roles:
         response = serializers.ArgsInvalidResponse().model_dump()
-        return http_response(status = HTTP_STATUS_INVALID_REQUEST, **response)
+        return http_response(status = HttpStatus.INVALID_REQUEST, **response)
     
     await users_model.roles.add(roles_model)
 
@@ -144,7 +144,7 @@ async def admin_post_users_roles(request: Request, body: serializers.AdminPostUs
     await new_log.save()
 
     response = serializers.AdminPostUsersRolesSuccessfullyResponse().model_dump()
-    return http_response(status = HTTP_STATUS_CREATED, **response)
+    return http_response(status = HttpStatus.CREATED, **response)
 
 
 
@@ -157,14 +157,14 @@ async def admin_delete_users_roles(request: Request, body: serializers.AdminDele
     elif body.id:
         users_model = User.filter(id=body.id)
     elif body.account:
-        users_model = User.filter(role_name=body.account)
+        users_model = User.filter(account=body.account)
     else:
         response = serializers.ArgsInvalidResponse().model_dump()
-        return http_response(status = HTTP_STATUS_INVALID_REQUEST, **response)
+        return http_response(status = HttpStatus.INVALID_REQUEST, **response)
     
     if not await users_model.exists():
         response = serializers.ArgsInvalidResponse().model_dump()
-        return http_response(status = HTTP_STATUS_INVALID_REQUEST, **response)
+        return http_response(status = HttpStatus.INVALID_REQUEST, **response)
 
     roles_model = serializers.RolesModel.model_validate(body.roles, from_attributes=True)
     roles_model = roles_model.model_dump(exclude_none = True, exclude_defaults = True, exclude_unset=True)
@@ -172,18 +172,18 @@ async def admin_delete_users_roles(request: Request, body: serializers.AdminDele
         roles_model = Role.filter(**roles_model)
     else:
         response = serializers.ArgsInvalidResponse().model_dump()
-        return http_response(status = HTTP_STATUS_INVALID_REQUEST, **response)
+        return http_response(status = HttpStatus.INVALID_REQUEST, **response)
     
     if not await roles_model.exists():
         response = serializers.ArgsInvalidResponse().model_dump()
-        return http_response(status = HTTP_STATUS_INVALID_REQUEST, **response)
+        return http_response(status = HttpStatus.INVALID_REQUEST, **response)
     
     users_model = await users_model.first()
     roles_model = await roles_model.first()
 
     if roles_model in await users_model.roles:
         response = serializers.ArgsInvalidResponse().model_dump()
-        return http_response(status = HTTP_STATUS_INVALID_REQUEST, **response)
+        return http_response(status = HttpStatus.INVALID_REQUEST, **response)
     
     await users_model.roles.remove(roles_model)
 
@@ -193,4 +193,4 @@ async def admin_delete_users_roles(request: Request, body: serializers.AdminDele
     new_log = Log(user = user, api = request.uri_template, action = f"User [{users_model.account}] remove Role [{roles_model.role_name}]", ip = request.ctx.real_ip, ua = request.ctx.ua, level = LogLevel.MIDIUM)
     await new_log.save()
 
-    return http_response(status = HTTP_STATUS_NO_CONTENT)
+    return http_response(status = HttpStatus.DELETED)

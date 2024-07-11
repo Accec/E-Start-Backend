@@ -3,39 +3,39 @@ from typing import Union, Optional, List, Any
 from utils.response import Successfully, ArgsInvalidError, RateLimitError, RequestError, TokenError, AuthorizedError
 
 class PermissionsModel(BaseModel):
-    id: Optional[int] = None
-    permission_title: Optional[str] = None
+    id: Optional[int] = Field(default=None)
+    permission_title: Optional[str] = Field(default=None)
 
 class AdminPostRolesPermissionsBody(BaseModel):
-    id: Optional[int] = None
-    role_name: Optional[str] = None
-    permissions: Optional[PermissionsModel] = None
+    id: Optional[int] = Field(default=None)
+    role_name: Optional[str] = Field(default=None)
+    permissions: Optional[PermissionsModel] = Field(default=None)
 
 class AdminDeleteRolesPermissionsBody(BaseModel):
-    id: Optional[int] = None
-    role_name: Optional[str] = None
-    permissions: Optional[PermissionsModel] = None
+    id: Optional[int] = Field(default=None)
+    role_name: Optional[str] = Field(default=None)
+    permissions: Optional[PermissionsModel] = Field(default=None)
 
 class AdminPutRolesBody(BaseModel):
     id: Optional[int]
     role_name: Optional[str]
 
 class AdminGetRolesQuery(BaseModel):
-    id: Optional[int] = None
-    role_name: Optional[str] = None
+    id: Optional[int] = Field(default=None)
+    role_name: Optional[str] = Field(default=None)
     page: Optional[int] = Field(default=1)
     page_size: Optional[int] = Field(default=20)
 
 class AdminPostRolesBody(BaseModel):
-    role_name: str = None
+    role_name: str = Field(default=None)
 
 class AdminDeleteRolesBody(BaseModel):
-    id: Optional[int] = None
-    role_name: Optional[str] = None
+    id: Optional[int] = Field(default=None)
+    role_name: Optional[str] = Field(default=None)
 
 class RolesModel(BaseModel):
-    id: Optional[int] = None
-    role_name: Optional[str] = None
+    id: Optional[int] = Field(default=None)
+    role_name: Optional[str] = Field(default=None)
     permissions: Optional[Any] = []
 
 class PaginatorSettings(BaseModel):

@@ -2,7 +2,7 @@ from utils.router import AdminBlueprint
 from utils.util import http_response
 from utils.constant import API_LOGGER
 from utils.constant import LogLevel
-from utils.constant import HTTP_STATUS_OK, HTTP_STATUS_INVALID_REQUEST, HTTP_STATUS_CREATED, HTTP_STATUS_NO_CONTENT
+from utils.constant import HttpStatus
 
 from sanic.request import Request
 from sanic_ext import validate
@@ -43,7 +43,7 @@ async def admin_get_endpoints(request: Request, query: serializers.AdminGetEndpo
 
     response = serializers.AdminGetEndpointsSuccessfullyResponse(result=results, total_items=paginator.total_items, total_pages=paginator.total_pages).model_dump()
 
-    return http_response(status = HTTP_STATUS_OK, **response)
+    return http_response(status = HttpStatus.OK, **response)
 
 
 
@@ -59,11 +59,11 @@ async def admin_post_endpoints_permissions(request: Request, body: serializers.A
         endpoints_model = Endpoint.filter(role_name=body.endpoint)
     else:
         response = serializers.ArgsInvalidResponse().model_dump()
-        return http_response(status = HTTP_STATUS_INVALID_REQUEST, **response)
+        return http_response(status = HttpStatus.INVALID_REQUEST, **response)
     
     if not await endpoints_model.exists():
         response = serializers.ArgsInvalidResponse().model_dump()
-        return http_response(status = HTTP_STATUS_INVALID_REQUEST, **response)
+        return http_response(status = HttpStatus.INVALID_REQUEST, **response)
 
     permissions_model = serializers.PermissionsModel.model_validate(body.permissions, from_attributes=True)
     permissions_model = permissions_model.model_dump(exclude_none = True, exclude_defaults = True, exclude_unset=True)
@@ -71,18 +71,18 @@ async def admin_post_endpoints_permissions(request: Request, body: serializers.A
         permissions_model = Permission.filter(**permissions_model)
     else:
         response = serializers.ArgsInvalidResponse().model_dump()
-        return http_response(status = HTTP_STATUS_INVALID_REQUEST, **response)
+        return http_response(status = HttpStatus.INVALID_REQUEST, **response)
     
     if not await permissions_model.exists():
         response = serializers.ArgsInvalidResponse().model_dump()
-        return http_response(status = HTTP_STATUS_INVALID_REQUEST, **response)
+        return http_response(status = HttpStatus.INVALID_REQUEST, **response)
     
     endpoints_model = await endpoints_model.first()
     permissions_model = await permissions_model.first()
 
     if permissions_model in await endpoints_model.permissions:
         response = serializers.ArgsInvalidResponse().model_dump()
-        return http_response(status = HTTP_STATUS_INVALID_REQUEST, **response)
+        return http_response(status = HttpStatus.INVALID_REQUEST, **response)
     
     await endpoints_model.permissions.add(permissions_model)
 
@@ -93,7 +93,7 @@ async def admin_post_endpoints_permissions(request: Request, body: serializers.A
     await new_log.save()
 
     response = serializers.AdminPostEndpointsPermissionsSuccessfullyResponse().model_dump()
-    return http_response(status = HTTP_STATUS_CREATED, **response)
+    return http_response(status = HttpStatus.CREATED, **response)
 
 
 
@@ -109,11 +109,11 @@ async def admin_delete_endpoints_permissions(request: Request, body: serializers
         endpoints_model = Endpoint.filter(role_name=body.endpoint)
     else:
         response = serializers.ArgsInvalidResponse().model_dump()
-        return http_response(status = HTTP_STATUS_INVALID_REQUEST, **response)
+        return http_response(status = HttpStatus.INVALID_REQUEST, **response)
     
     if not await endpoints_model.exists():
         response = serializers.ArgsInvalidResponse().model_dump()
-        return http_response(status = HTTP_STATUS_INVALID_REQUEST, **response)
+        return http_response(status = HttpStatus.INVALID_REQUEST, **response)
 
     permissions_model = serializers.PermissionsModel.model_validate(body.permissions, from_attributes=True)
     permissions_model = permissions_model.model_dump(exclude_none = True, exclude_defaults = True, exclude_unset=True)
@@ -121,18 +121,18 @@ async def admin_delete_endpoints_permissions(request: Request, body: serializers
         permissions_model = Permission.filter(**permissions_model)
     else:
         response = serializers.ArgsInvalidResponse().model_dump()
-        return http_response(status = HTTP_STATUS_INVALID_REQUEST, **response)
+        return http_response(status = HttpStatus.INVALID_REQUEST, **response)
     
     if not await permissions_model.exists():
         response = serializers.ArgsInvalidResponse().model_dump()
-        return http_response(status = HTTP_STATUS_INVALID_REQUEST, **response)
+        return http_response(status = HttpStatus.INVALID_REQUEST, **response)
     
     endpoints_model = await endpoints_model.first()
     permissions_model = await permissions_model.first()
 
     if permissions_model in await endpoints_model.permissions:
         response = serializers.ArgsInvalidResponse().model_dump()
-        return http_response(status = HTTP_STATUS_INVALID_REQUEST, **response)
+        return http_response(status = HttpStatus.INVALID_REQUEST, **response)
     
     await endpoints_model.permissions.remove(permissions_model)
 
@@ -142,4 +142,4 @@ async def admin_delete_endpoints_permissions(request: Request, body: serializers
     new_log = Log(user = user, api = request.uri_template, action = f"Endpoint [{endpoints_model.endpoint}] remove permission [{permissions_model.permission_title}]", ip = request.ctx.real_ip, ua = request.ctx.ua, level = LogLevel.MIDIUM)
     await new_log.save()
 
-    return http_response(status = HTTP_STATUS_NO_CONTENT)
+    return http_response(status = HttpStatus.DELETED)

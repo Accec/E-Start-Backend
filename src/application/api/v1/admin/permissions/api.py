@@ -2,7 +2,7 @@ from utils.router import AdminBlueprint
 from utils.util import http_response
 from utils.constant import API_LOGGER
 from utils.constant import LogLevel
-from utils.constant import HTTP_STATUS_OK, HTTP_STATUS_INVALID_REQUEST, HTTP_STATUS_CREATED, HTTP_STATUS_NO_CONTENT
+from utils.constant import HttpStatus
 
 from sanic.request import Request
 from sanic_ext import validate
@@ -40,7 +40,7 @@ async def admin_get_permissions(request: Request, query: serializers.AdminGetPer
 
     response = serializers.AdminGetPermissionsSuccessfullyResponse(result=results, total_items=paginator.total_items, total_pages=paginator.total_pages).model_dump()
     
-    return http_response(status = HTTP_STATUS_OK, **response)
+    return http_response(status = HttpStatus.OK, **response)
 
 
 
@@ -50,7 +50,7 @@ async def admin_get_permissions(request: Request, query: serializers.AdminGetPer
 async def admin_post_permissions(request: Request, body: serializers.AdminPostPermissionsBody):
     if await Permission.exists(permission_title=body.permission_title):
         response = serializers.ArgsInvalidResponse().model_dump()
-        return http_response(status=HTTP_STATUS_INVALID_REQUEST, **response)
+        return http_response(status=HttpStatus.INVALID_REQUEST, **response)
     
     new_permission = Permission(permission_title=body.permission_title)
     await new_permission.save()
@@ -62,7 +62,7 @@ async def admin_post_permissions(request: Request, body: serializers.AdminPostPe
     await new_log.save()
 
     response = serializers.AdminPostPermissionsSuccessfullyResponse().model_dump()
-    return http_response(status=HTTP_STATUS_CREATED, **response)
+    return http_response(status=HttpStatus.CREATED, **response)
 
 
 
@@ -74,11 +74,11 @@ async def admin_delete_permissions(request: Request, body: serializers.AdminDele
     permission_model = permission_model.model_dump(exclude_none = True, exclude_defaults = True, exclude_unset=True)
     if not permission_model:
         response = serializers.ArgsInvalidResponse().model_dump()
-        return http_response(status = HTTP_STATUS_INVALID_REQUEST, **response)
+        return http_response(status = HttpStatus.INVALID_REQUEST, **response)
     permissions_model = Permission.filter(**permission_model)
     if not await permissions_model.exists():
         response = serializers.ArgsInvalidResponse().model_dump()
-        return http_response(status = HTTP_STATUS_INVALID_REQUEST, **response)
+        return http_response(status = HttpStatus.INVALID_REQUEST, **response)
     
     await permissions_model.delete()
     # create log
@@ -88,7 +88,7 @@ async def admin_delete_permissions(request: Request, body: serializers.AdminDele
     new_log = Log(user = user, api = request.uri_template, action = f"Permission [{permission_model}] is deleted", ip = request.ctx.real_ip, ua = request.ctx.ua, level = LogLevel.MIDIUM)
     await new_log.save()
 
-    return http_response(status = HTTP_STATUS_NO_CONTENT)
+    return http_response(status = HttpStatus.DELETED)
 
 
 
@@ -99,7 +99,7 @@ async def admin_put_permissions(request: Request, body: serializers.AdminPutPerm
     permission_model = Permission.filter(id = body.id)
     if not await permission_model.exists():
         response = serializers.ArgsInvalidResponse().model_dump()
-        return http_response(status = HTTP_STATUS_INVALID_REQUEST, **response)
+        return http_response(status = HttpStatus.INVALID_REQUEST, **response)
     
     old_permission_title = await permission_model.first()
     old_permission_title = old_permission_title.permission_title
@@ -113,4 +113,4 @@ async def admin_put_permissions(request: Request, body: serializers.AdminPutPerm
     await new_log.save()
 
     response = serializers.AdminPutPermissionsSuccessfullyResponse().model_dump()
-    return http_response(status = HTTP_STATUS_CREATED, **response)
+    return http_response(status = HttpStatus.CREATED, **response)

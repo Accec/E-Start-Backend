@@ -4,15 +4,15 @@ from typing import Union, Optional, List
 from utils.response import Successfully, ArgsInvalidError, RateLimitError, RequestError, TokenError, AuthorizedError
 
 class AdminGetLogsQuery(BaseModel):
-    id: Optional[int] = None
-    user_id: Optional[int] = None
-    api: Optional[str] = None
-    action: Optional[str] = None
-    ip: Optional[str] = None
-    ua: Optional[str] = None
-    level: Optional[int] = None
-    update_time: Optional[str] = None
-    create_time: Optional[str] = None
+    id: Optional[int] = Field(default=None)
+    user_id: Optional[int] = Field(default=None)
+    api: Optional[str] = Field(default=None)
+    action: Optional[str] = Field(default=None)
+    ip: Optional[str] = Field(default=None)
+    ua: Optional[str] = Field(default=None)
+    level: Optional[int] = Field(default=None)
+    update_time: Optional[str] = Field(default=None)
+    create_time: Optional[str] = Field(default=None)
     page: Optional[int] = 1
     page_size: Optional[int] = 20
 
@@ -21,15 +21,15 @@ class AdminGetLogsQuery(BaseModel):
         return value.strftime("%Y-%m-%d %H:%M:%S") if value else None
 
 class AdminGetLogModel(BaseModel):
-    id: Optional[int] = None
-    user_id: Optional[int] = None
-    api: Optional[str] = None
-    action: Optional[str] = None
-    ip: Optional[str] = None
-    ua: Optional[str] = None
-    level: Optional[int] = None
-    update_time: Optional[str] = None
-    create_time: Optional[str] = None
+    id: Optional[int] = Field(default=None)
+    user_id: Optional[int] = Field(default=None)
+    api: Optional[str] = Field(default=None)
+    action: Optional[str] = Field(default=None)
+    ip: Optional[str] = Field(default=None)
+    ua: Optional[str] = Field(default=None)
+    level: Optional[int] = Field(default=None)
+    update_time: Optional[str] = Field(default=None)
+    create_time: Optional[str] = Field(default=None)
 
     @field_validator('create_time', 'update_time', mode="before")
     def format_datetime_to_str(cls, value: datetime.datetime):

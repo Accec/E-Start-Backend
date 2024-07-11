@@ -10,9 +10,9 @@ class Job(BaseModel):
     jobs: Dict[str, JobConfig]
 
 class AdminPutJobsBody(BaseModel):
-    job_name: str = Field()
-    interval: int = Field()
-    status: int = Field()
+    job_name: str = Field(default=None)
+    interval: int = Field(default=None)
+    status: int = Field(default=None)
 
 class AdminGetJobsSuccessfullyResponse(BaseModel):
     code: int = Field(default=Successfully.code)

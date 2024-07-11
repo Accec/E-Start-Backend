@@ -1,7 +1,7 @@
 from utils.router import AdminBlueprint
 from utils.util import http_response
 from utils.constant import API_LOGGER
-from utils.constant import HTTP_STATUS_OK, HTTP_STATUS_INVALID_REQUEST, HTTP_STATUS_CREATED
+from utils.constant import HttpStatus
 
 
 from sanic.request import Request
@@ -23,7 +23,7 @@ Logger = logging.getLogger(API_LOGGER)
 async def admin_get_jobs(request: Request):
     job_list = await Scheduler.get_jobs()
     response = serializers.AdminGetJobsSuccessfullyResponse(result = job_list).model_dump()
-    return http_response(status = HTTP_STATUS_OK, **response)
+    return http_response(status = HttpStatus.OK, **response)
 
 @AdminBlueprint.put("/jobs")
 @validate(json=serializers.AdminPutJobsBody)
@@ -32,11 +32,11 @@ async def admin_put_jobs(request: Request, body: serializers.AdminPutJobsBody):
     jobs = await Scheduler.get_jobs()
     if body.job_name not in jobs:
         response = serializers.ArgsInvalidResponse().model_dump()
-        return http_response(status = HTTP_STATUS_INVALID_REQUEST, **response)
+        return http_response(status = HttpStatus.INVALID_REQUEST, **response)
     
     if not await Scheduler.set_job(**body.model_dump(exclude_none=True)):
         response = serializers.ArgsInvalidResponse().model_dump()
-        return http_response(status = HTTP_STATUS_INVALID_REQUEST, **response)
+        return http_response(status = HttpStatus.INVALID_REQUEST, **response)
     
     response = serializers.AdminPutJobsSuccessfullyResponse().model_dump()
-    return http_response(status = HTTP_STATUS_CREATED, **response)
+    return http_response(status = HttpStatus.CREATED, **response)

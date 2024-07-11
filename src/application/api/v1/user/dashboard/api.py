@@ -8,7 +8,7 @@ from models import User
 
 from modules.auth import jwt
 
-from utils.constant import HTTP_STATUS_OK
+from utils.constant import HttpStatus
 
 JwtAuth = jwt.JwtAuth()
 
@@ -32,4 +32,4 @@ async def user_get_dashboard(request: Request):
 
     response = serializers.UserGetDashboardSuccessfullyResponse(results=result).model_dump()
     
-    return http_response(status = HTTP_STATUS_OK, **response)
+    return http_response(status = HttpStatus.OK, **response)

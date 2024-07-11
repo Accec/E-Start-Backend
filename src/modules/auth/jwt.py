@@ -3,9 +3,8 @@ from functools import wraps
 
 import datetime
 
-from sanic import router
-
-from utils.constant import LogLevel, UserStatus, USER_PERMISSIONS_KEY, ENDPOINT_PERMISSIONS_KEY
+from utils.constant import LogLevel, UserStatus, HttpStatus
+from utils.constant import USER_PERMISSIONS_KEY, ENDPOINT_PERMISSIONS_KEY
 from utils.response import AuthorizedError, TokenError
 from utils.util import http_response
 
@@ -118,17 +117,17 @@ class JwtAuth:
                             user = await User.get(id=user_id)
                             new_log = Log(user = user, api = endpoint, action = "Privilege escalation", ip = request.ctx.real_ip, ua = request.ctx.ua, level = LogLevel.HIGH)
                             await new_log.save()
-                            return http_response(AuthorizedError.code, AuthorizedError.msg, status=403)
+                            return http_response(AuthorizedError.code, AuthorizedError.msg, status=HttpStatus.FORBIDDEN)
 
                         if not all(perm in user_permissions for perm in permissions):
                             user = await User.get(id=user_id)
                             new_log = Log(user = user, api = endpoint, action = "Privilege escalation", ip = request.ctx.real_ip, ua = request.ctx.ua, level = LogLevel.HIGH)
                             await new_log.save()
-                            return http_response(AuthorizedError.code, AuthorizedError.msg, status=403)
+                            return http_response(AuthorizedError.code, AuthorizedError.msg, status=HttpStatus.FORBIDDEN)
                                             
                     response = await f(request, *args, **kwargs)
                     return response
                 else:
-                    return http_response(TokenError.code, TokenError.msg, status=401)
+                    return http_response(TokenError.code, TokenError.msg, status=HttpStatus.UNAUTHORIZED)
             return decorated_function
         return decorator

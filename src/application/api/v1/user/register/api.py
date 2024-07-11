@@ -1,7 +1,7 @@
 from utils.constant import LogLevel
 from utils.constant import ROLE_USER
 from utils.constant import API_LOGGER
-from utils.constant import HTTP_STATUS_CREATED, HTTP_STATUS_INVALID_REQUEST
+from utils.constant import HttpStatus
 from utils.router import UserBlueprint
 from utils.util import http_response
 from sanic_ext import validate
@@ -26,7 +26,7 @@ Logger = logging.getLogger(API_LOGGER)
 async def user_post_register(request: Request, body: serializers.UserPostRegisterBody):
     if await User.exists(account=body.account):
         response = serializers.UserExistResponse().model_dump()
-        return http_response(status = HTTP_STATUS_INVALID_REQUEST, **response)
+        return http_response(status = HttpStatus.INVALID_REQUEST, **response)
 
     # generate open id and hash password
     open_id = generate_openid(body.account, str(datetime.datetime.now(datetime.UTC).timestamp() * 1000))
@@ -43,4 +43,4 @@ async def user_post_register(request: Request, body: serializers.UserPostRegiste
     await new_log.save()
 
     response = serializers.UserPostLoginSuccessfullyResponse().model_dump()
-    return http_response(status=HTTP_STATUS_CREATED, **response)
+    return http_response(status=HttpStatus.CREATED, **response)

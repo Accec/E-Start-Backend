@@ -3,25 +3,25 @@ from typing import Union, Optional, List, Any
 from utils.response import Successfully, ArgsInvalidError, RateLimitError, RequestError, TokenError, AuthorizedError
 
 class PermissionsModel(BaseModel):
-    id: Optional[int] = None
-    permission_title: Optional[str] = None
+    id: Optional[int] = Field(default=None)
+    permission_title: Optional[str] = Field(default=None)
 
 class AdminPostPermissionsBody(BaseModel):
-    permission_title: Optional[str] = None
+    permission_title: Optional[str] = Field(default=None)
 
 class AdminPutPermissionsBody(BaseModel):
     id: Optional[int]
     permission_title: Optional[str]
 
 class AdminGetPermissionsQuery(BaseModel):
-    id: Optional[int] = None
-    permission_title: Optional[str] = None
+    id: Optional[int] = Field(default=None)
+    permission_title: Optional[str] = Field(default=None)
     page: Optional[int] = Field(default=1)
     page_size: Optional[int] = Field(default=20)
 
 class AdminDeletePermissionsBody(BaseModel):
-    id: Optional[int] = None
-    permission_title: Optional[str] = None
+    id: Optional[int] = Field(default=None)
+    permission_title: Optional[str] = Field(default=None)
 
 class PaginatorSettings(BaseModel):
     page: Optional[int] = Field(default=1)

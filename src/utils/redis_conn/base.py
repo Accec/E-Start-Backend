@@ -7,7 +7,7 @@ import asyncio
 
 class RedisClient:
     _instance = None
-
+    
     def __new__(cls, url) -> aioredis.StrictRedis:
         if cls._instance is None:
             cls._instance = super().__new__(cls)
