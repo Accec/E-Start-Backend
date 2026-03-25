@@ -1,33 +1,81 @@
 import logging
-from utils.constant import API_LOGGER
-from utils.error import RequestException
-from sanic import request
+from typing import Any
 
-Logging = logging.getLogger(API_LOGGER)
-async def request_handling(request: request.Request):
-    
-    request_id = request.id
-    request.ctx.request_id = request_id
+from sanic.request import Request
+
+from core.constants import API_LOGGER
+
+
+logger = logging.getLogger(API_LOGGER)
+MAX_LOGGED_PAYLOAD_LENGTH = 2048
+
+
+def resolve_request_path(request: Request) -> str:
+    return request.uri_template or request.path
+
+
+def normalize_request_mapping(mapping: Any) -> dict[str, Any]:
+    if mapping is None:
+        return {}
+
+    normalized: dict[str, Any] = {}
+    for key in mapping.keys():
+        if hasattr(mapping, "getlist"):
+            values = mapping.getlist(key)
+            normalized[key] = values if len(values) > 1 else values[0]
+            continue
+        normalized[key] = mapping.get(key)
+    return normalized
+
+
+def extract_request_payload(request: Request) -> dict[str, Any]:
+    if request.method in {"GET", "DELETE"}:
+        return normalize_request_mapping(request.args)
+
+    content_type = (request.content_type or "").lower()
+    if "application/json" in content_type:
+        payload = request.json
+        if payload is None:
+            return {}
+        if isinstance(payload, dict):
+            return payload
+        return {"data": payload}
+
+    return normalize_request_mapping(request.form)
+
+
+def format_request_payload(payload: dict[str, Any]) -> str:
+    serialized = repr(payload)
+    if len(serialized) <= MAX_LOGGED_PAYLOAD_LENGTH:
+        return serialized
+    return f"{serialized[:MAX_LOGGED_PAYLOAD_LENGTH]}...<truncated>"
+
+
+async def request_handling(request: Request):
+    request.ctx.request_id = request.id
     request.ctx.real_ip = request.remote_addr or request.ip
-    request.ctx.ua = request.headers.get('user-agent')
-
-    request_params = {}
-    request.uri_template
+    request.ctx.ua = request.headers.get("user-agent", "")
+    # Use a single normalized route key so auth, rate limiting, and audit logs
+    # all talk about the same endpoint identifier.
+    request.ctx.request_path = resolve_request_path(request)
 
     try:
-        request_method = request.method
+        request_payload = extract_request_payload(request)
+    except Exception as exc:
+        logger.warning(
+            "request_id[%s]-client_ip[%s]-url[%s]-payload_extract_failed[%s]",
+            request.ctx.request_id,
+            request.ctx.real_ip,
+            request.url,
+            exc,
+        )
+        return
 
-        if request_method == 'GET':
-            request_params = request.args
-        else:
-            if 'application/json' in request.content_type: #json
-                request_params = request.json
-            else:
-                request_params = {key: request.form.get(key) for key in request.form.keys()}
-
-        if request_params != {}:
-            Logging.info(f"request_id[{request_id}]-client_ip[{request.ctx.real_ip}]-url[{request.url}]-body[{request_params}]")
-        
-
-    except Exception as e:
-        raise RequestException(e.__str__())
+    if request_payload:
+        logger.info(
+            "request_id[%s]-client_ip[%s]-url[%s]-body[%s]",
+            request.ctx.request_id,
+            request.ctx.real_ip,
+            request.url,
+            format_request_payload(request_payload),
+        )

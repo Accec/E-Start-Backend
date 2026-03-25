@@ -1,0 +1,91 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Backend Config",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "app": {
+      "type": "string",
+      "description": "Application name."
+    },
+    "debug": {
+      "type": "boolean",
+      "description": "Enable debug mode for local development."
+    },
+    "pip": {
+      "type": "string",
+      "description": "Preferred pip executable name."
+    },
+    "relative_path": {
+      "type": "boolean",
+      "description": "Resolve upload and log paths relative to the current working directory."
+    },
+    "uploads_path": {
+      "type": "string",
+      "description": "Upload directory path."
+    },
+    "logs_path": {
+      "type": "string",
+      "description": "Log directory path."
+    },
+    "jwt_secret_key": {
+      "type": "string",
+      "description": "JWT signing key."
+    },
+    "sanic_host": {
+      "type": "string",
+      "description": "Sanic bind host."
+    },
+    "sanic_port": {
+      "type": "integer",
+      "description": "Sanic bind port."
+    },
+    "forwarded_secret": {
+      "type": "string",
+      "description": "Trusted forwarded secret."
+    },
+    "mysql_host": {
+      "type": "string",
+      "description": "MySQL host."
+    },
+    "mysql_port": {
+      "type": "integer",
+      "description": "MySQL port."
+    },
+    "mysql_username": {
+      "type": "string",
+      "description": "MySQL username."
+    },
+    "mysql_password": {
+      "type": "string",
+      "description": "MySQL password."
+    },
+    "mysql_database_name": {
+      "type": "string",
+      "description": "MySQL database name."
+    },
+    "redis_url": {
+      "type": "string",
+      "description": "Redis connection URL."
+    },
+    "cors_domains": {
+      "type": "array",
+      "description": "Allowed CORS domains.",
+      "items": {
+        "type": "string"
+      }
+    },
+    "timezone": {
+      "type": "string",
+      "description": "Application timezone identifier."
+    },
+    "jwt_exp_time": {
+      "type": "integer",
+      "description": "JWT expiration time in seconds."
+    },
+    "migrations_path": {
+      "type": "string",
+      "description": "Aerich migrations directory."
+    }
+  }
+}

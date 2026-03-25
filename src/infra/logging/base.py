@@ -1,0 +1,68 @@
+import logging
+import os
+import re
+from logging.handlers import TimedRotatingFileHandler
+
+
+class RetimedRotatingFileHandler(TimedRotatingFileHandler):
+    def getFilesToDelete(self):
+        directory_name, _ = os.path.split(self.baseFilename)
+        file_names = os.listdir(directory_name)
+        result = []
+        for file_name in file_names:
+            if self.extMatch.match(file_name):
+                result.append(os.path.join(directory_name, file_name))
+        if len(result) < self.backupCount:
+            return []
+        result.sort()
+        return result[: len(result) - self.backupCount]
+
+
+def split_file_name(filename):
+    file_path = filename.split("default.log.")
+    return "".join(file_path)
+
+
+def build_suffix_pattern(when: str):
+    suffix_patterns = {
+        "S": r"^\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}(.log)$",
+        "M": r"^\d{4}-\d{2}-\d{2}_\d{2}-\d{2}(.log)$",
+        "H": r"^\d{4}-\d{2}-\d{2}_\d{2}(.log)$",
+        "D": r"^\d{4}-\d{2}-\d{2}(.log)$",
+        "MIDNIGHT": r"^\d{4}-\d{2}-\d{2}(.log)$",
+        "W": r"^\d{4}-\d{2}-\d{2}(.log)$",
+    }
+    return suffix_patterns[when]
+
+
+def setup_logger(log_name, logs_path, when, level):
+    logger_object = logging.getLogger(log_name)
+    log_file_path = f"{logs_path}/default.log"
+
+    logger_handler = RetimedRotatingFileHandler(
+        filename=log_file_path,
+        when=when,
+        interval=1,
+        backupCount=7,
+        encoding="utf-8",
+    )
+    logger_handler.namer = split_file_name
+    logger_handler.suffix = f"{logger_handler.suffix}.log"
+    # TimedRotatingFileHandler only cleans files that match extMatch, so the
+    # suffix format and the compiled pattern must stay in sync.
+    logger_handler.extMatch = re.compile(build_suffix_pattern(when), re.ASCII)
+
+    logger_formatter = logging.Formatter(
+        "[%(asctime)s] [%(process)d] [%(levelname)s] - %(name)s.%(module)s.%(funcName)s "
+        "(%(filename)s:%(lineno)d) - %(message)s"
+    )
+    stream_handler = logging.StreamHandler()
+
+    logger_handler.setFormatter(logger_formatter)
+    stream_handler.setFormatter(logger_formatter)
+
+    logger_object.addHandler(logger_handler)
+    logger_object.addHandler(stream_handler)
+    logger_object.setLevel(level)
+
+    return logger_object

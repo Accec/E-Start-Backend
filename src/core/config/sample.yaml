@@ -1,0 +1,19 @@
+# yaml-language-server: $schema=./schema.json
+app: Backend
+debug: true
+pip: pip
+relative_path: true
+uploads_path: uploads
+logs_path: logs
+jwt_secret_key: ""
+sanic_host: localhost
+sanic_port: 8000
+forwarded_secret: ""
+mysql_host: 127.0.0.1
+mysql_port: 3306
+mysql_username: root
+mysql_password: ""
+mysql_database_name: demo
+redis_url: redis://127.0.0.1/0
+cors_domains:
+  - localhost.com
