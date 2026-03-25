@@ -17,7 +17,7 @@ def cli():
     if args.command == "server":
         from app.bootstrap import start_http_server
 
-        asyncio.run(start_http_server())
+        start_http_server()
         return
 
     if args.command == "scheduler":

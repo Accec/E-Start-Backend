@@ -35,8 +35,13 @@ def build_suffix_pattern(when: str):
     return suffix_patterns[when]
 
 
-def setup_logger(log_name, logs_path, when, level):
-    logger_object = logging.getLogger(log_name)
+def clear_handlers(logger_object: logging.Logger) -> None:
+    for handler in list(logger_object.handlers):
+        logger_object.removeHandler(handler)
+        handler.close()
+
+
+def build_handlers(logs_path: str, when: str) -> list[logging.Handler]:
     log_file_path = f"{logs_path}/default.log"
 
     logger_handler = RetimedRotatingFileHandler(
@@ -61,8 +66,24 @@ def setup_logger(log_name, logs_path, when, level):
     logger_handler.setFormatter(logger_formatter)
     stream_handler.setFormatter(logger_formatter)
 
-    logger_object.addHandler(logger_handler)
-    logger_object.addHandler(stream_handler)
-    logger_object.setLevel(level)
+    return [logger_handler, stream_handler]
 
+
+def setup_root_logger(logs_path: str, when: str, level: int) -> logging.Logger:
+    logger_object = logging.getLogger()
+    clear_handlers(logger_object)
+
+    for handler in build_handlers(logs_path, when):
+        logger_object.addHandler(handler)
+
+    logger_object.setLevel(level)
+    logger_object.propagate = False
+    return logger_object
+
+
+def mount_logger(log_name: str, level: int) -> logging.Logger:
+    logger_object = logging.getLogger(log_name)
+    clear_handlers(logger_object)
+    logger_object.setLevel(level)
+    logger_object.propagate = True
     return logger_object

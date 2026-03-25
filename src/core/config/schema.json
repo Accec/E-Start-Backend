@@ -40,6 +40,11 @@
       "type": "integer",
       "description": "Sanic bind port."
     },
+    "sanic_workers": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Number of Sanic worker processes."
+    },
     "forwarded_secret": {
       "type": "string",
       "description": "Trusted forwarded secret."

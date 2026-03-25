@@ -178,9 +178,11 @@ class TestRefactorStructure(unittest.TestCase):
             "middleware/request_handling/request_handling.py",
             "scripts/ops/cli.py",
             "tests/test_health_checks.py",
+            "tests/test_logging_configuration.py",
             "tests/test_pagination.py",
             "tests/test_password_security.py",
             "tests/test_request_handling.py",
+            "tests/test_runtime_multiworker.py",
         ]
         for rel in key_modules:
             with self.subTest(module=rel):
@@ -211,6 +213,7 @@ class TestRefactorStructure(unittest.TestCase):
         self.assertIn("start_http_server", content)
         self.assertIn("start_scheduler", content)
         self.assertIn("from scripts.ops import cli", content)
+        self.assertNotIn("asyncio.run(start_http_server())", content)
         self.assertNotIn("from app.bootstrap import start_http_server, start_scheduler", content)
         self.assertNotIn("from core.config import Config", content)
         self.assertNotIn("from infra.scheduler import Scheduler", content)
@@ -234,20 +237,45 @@ class TestRefactorStructure(unittest.TestCase):
         self.assertIn("def build_runtime", content)
         self.assertIn("def build_http_server", content)
         self.assertIn("def build_scheduler", content)
-        self.assertIn("def bind_http_server_lifecycle", content)
-        self.assertIn("async def init_application", content)
-        self.assertIn("async def start_http_server", content)
+        self.assertIn("def resolve_bootstrap", content)
+        self.assertIn("def setup_logging", content)
+        self.assertIn("async def init_scheduler_application", content)
+        self.assertIn("async def start_single_worker_http_server", content)
+        self.assertIn("def start_multi_worker_http_server", content)
+        self.assertIn("def start_http_server", content)
         self.assertIn("async def start_scheduler", content)
+        self.assertIn("def build_http_server_from_config", content)
         self.assertIn("request_handling", content)
         self.assertIn("get_blueprints", content)
         self.assertIn("build_bootstrap", content)
         self.assertIn("self.bootstrap = build_bootstrap(self.config)", content)
-        self.assertIn("return self.bootstrap.operations.scheduler", content)
+        self.assertIn("return self.resolve_bootstrap().operations.scheduler", content)
+        self.assertIn("if self.config.sanic_workers == 1", content)
+        self.assertIn("AppLoader(factory=server_factory)", content)
+        self.assertIn("Sanic.serve(primary=primary", content)
+        self.assertNotIn("def bind_http_server_lifecycle", content)
+        self.assertNotIn("def should_embed_scheduler", content)
+        self.assertNotIn("scheduler.run_by_async()", content)
+        self.assertNotIn("app.add_task(scheduler.run_by_async())", content)
         self.assertIn("class ApplicationBootstrap", container_content)
         self.assertIn("def build_bootstrap", container_content)
         self.assertNotIn("config = Config()", content)
         self.assertIn("def create_app(config: Config)", application_content)
         self.assertNotIn("config = Config()", application_content)
+
+    def test_config_includes_sanic_worker_settings(self):
+        config_content = (SRC / "core/config/__init__.py").read_text(encoding="utf-8")
+        base_yaml = (SRC / "core/config/base.yaml").read_text(encoding="utf-8")
+        dev_yaml = (SRC / "core/config/dev.yaml").read_text(encoding="utf-8")
+        sample_yaml = (SRC / "core/config/sample.yaml").read_text(encoding="utf-8")
+        schema = json.loads((SRC / "core/config/schema.json").read_text(encoding="utf-8"))
+
+        self.assertIn("sanic_workers: int = 1", config_content)
+        self.assertIn("sanic_workers: 1", base_yaml)
+        self.assertIn("sanic_workers: 1", dev_yaml)
+        self.assertIn("sanic_workers: 1", sample_yaml)
+        self.assertIn("sanic_workers", schema["properties"])
+        self.assertEqual(schema["properties"]["sanic_workers"]["minimum"], 1)
 
     def test_request_handling_only_enriches_context_and_logs_safely(self):
         content = (SRC / "middleware/request_handling/request_handling.py").read_text(encoding="utf-8")
@@ -815,7 +843,7 @@ class TestRefactorStructure(unittest.TestCase):
             from core.config import load_config
 
             config = load_config()
-            self.assertEqual(config.app, "demo")
+            self.assertTrue(config.app)
             self.assertEqual(config.sanic_port, 8000)
             self.assertEqual(config.jwt_exp_time, 86400)
             self.assertEqual(config.cors_domains[0], "localhost.com")
@@ -911,12 +939,16 @@ class TestRefactorStructure(unittest.TestCase):
             from app.bootstrap.routes import get_blueprints
             from app.bootstrap.runtime import build_runtime
             from core.config import load_config
+            from sanic import Sanic
 
+            config = load_config()
             blueprints = get_blueprints(build_bootstrap())
             self.assertEqual([blueprint.name for blueprint in blueprints], ["user", "admin", "system"])
 
-            server = build_runtime(load_config()).build_http_server()
-            self.assertEqual(server.name, "demo")
+            Sanic._app_registry.pop(config.app, None)
+            server = build_runtime(config).build_http_server()
+            self.assertEqual(server.name, config.app)
+            Sanic._app_registry.pop(config.app, None)
         finally:
             sys.path.pop(0)
 

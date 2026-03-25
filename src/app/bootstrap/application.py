@@ -8,7 +8,9 @@ from .database import register_database
 
 
 def create_app(config: Config):
-    server = sanic.Sanic(config.app)
+    # Sanic's built-in logging bootstrap installs its own handlers and format,
+    # which causes duplicate output once the application mounts its own logger.
+    server = sanic.Sanic(config.app, configure_logging=False)
 
     config.apply_runtime_paths(os.getcwd())
 

@@ -8,6 +8,7 @@ logs_path: logs
 jwt_secret_key: ""
 sanic_host: localhost
 sanic_port: 8000
+sanic_workers: 1
 forwarded_secret: ""
 mysql_host: 127.0.0.1
 mysql_port: 3306

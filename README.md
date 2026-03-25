@@ -33,7 +33,7 @@ git clone https://github.com/Accec/E-Start-Backend
    ```
 4. Open your configuration file with a text editor (like `vi`) and set the configuration.
    The YAML files now point to [schema.json](src/core/config/schema.json), so IDEs/YAML language servers can provide key completion and validation:
-   Config keys use `snake_case` consistently, for example `jwt_secret_key`, `redis_url`, `mysql_database_name`.
+   Config keys use `snake_case` consistently, for example `jwt_secret_key`, `redis_url`, `mysql_database_name`, `sanic_workers`.
    ```bash
    vi <CONFIG_NAME>.yaml
    ```
@@ -54,6 +54,19 @@ git clone https://github.com/Accec/E-Start-Backend
    python src/main.py init_database
    python src/main.py create_admin --username <USERNAME> --password <PASSWORD>
    ```
+
+### HTTP Workers
+
+Set `sanic_workers` in your YAML config to control the number of HTTP worker processes.
+
+- `sanic_workers: 1` runs a single HTTP worker.
+- `sanic_workers: 2` or higher enables multi-worker HTTP mode.
+
+The scheduler is always a separate process now. HTTP mode never starts background jobs, regardless of worker count. Run the scheduler separately:
+
+```bash
+python src/main.py scheduler
+```
 
 ### Database Migrations
 

@@ -2,3 +2,4 @@
 timezone: UTC
 jwt_exp_time: 86400
 migrations_path: migrations
+sanic_workers: 1

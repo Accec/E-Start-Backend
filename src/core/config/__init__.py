@@ -33,6 +33,7 @@ class ConfigModel:
     jwt_secret_key: str = ""
     sanic_host: str = "localhost"
     sanic_port: int = 8000
+    sanic_workers: int = 1
     forwarded_secret: str = ""
     mysql_host: str = "localhost"
     mysql_port: int = 3306
@@ -118,6 +119,8 @@ class Config(ConfigModel):
                 raise KeyError(f"Missing required config key: {name}")
 
             cls._validate_type(name, value, config_field.type)
+            if name == "sanic_workers" and value < 1:
+                raise ValueError("Config key [sanic_workers] must be greater than or equal to 1")
             values[name] = value
 
         return values
