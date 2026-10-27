@@ -42,6 +42,7 @@ def clear_handlers(logger_object: logging.Logger) -> None:
 
 
 def build_handlers(logs_path: str, when: str) -> list[logging.Handler]:
+    os.makedirs(logs_path, exist_ok=True)
     log_file_path = f"{logs_path}/default.log"
 
     logger_handler = RetimedRotatingFileHandler(

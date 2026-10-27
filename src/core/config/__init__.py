@@ -22,6 +22,34 @@ except ModuleNotFoundError as exc:
 load_dotenv(Path(__file__).resolve().parents[2] / ".env")
 
 
+_CONFIG_SECTIONS = {
+    "app": {"name": "app", "debug": "debug", "timezone": "timezone"},
+    "server": {
+        "host": "sanic_host",
+        "port": "sanic_port",
+        "workers": "sanic_workers",
+        "forwarded_secret": "forwarded_secret",
+        "cors_domains": "cors_domains",
+    },
+    "paths": {
+        "relative": "relative_path",
+        "uploads": "uploads_path",
+        "logs": "logs_path",
+        "migrations": "migrations_path",
+    },
+    "jwt": {"secret_key": "jwt_secret_key", "exp_time": "jwt_exp_time"},
+    "mysql": {
+        "host": "mysql_host",
+        "port": "mysql_port",
+        "username": "mysql_username",
+        "password": "mysql_password",
+        "database": "mysql_database_name",
+    },
+    "redis": {"url": "redis_url"},
+    "tools": {"pip": "pip"},
+}
+
+
 @dataclass(slots=True)
 class ConfigModel:
     app: str = "Demo"
@@ -103,25 +131,36 @@ class Config(ConfigModel):
     @classmethod
     def _build_values(cls, raw_data: dict[str, Any]) -> dict[str, Any]:
         config_fields = {config_field.name: config_field for config_field in fields(ConfigModel)}
-        unknown_keys = sorted(set(raw_data) - set(config_fields))
-        if unknown_keys:
-            raise KeyError(f"Unknown config keys: {', '.join(unknown_keys)}")
+        unknown_sections = sorted(set(raw_data) - set(_CONFIG_SECTIONS))
+        if unknown_sections:
+            raise KeyError(f"Unknown config sections: {', '.join(unknown_sections)}")
 
         values = {}
-        for name, config_field in config_fields.items():
-            if name in raw_data:
-                value = raw_data[name]
-            elif config_field.default is not MISSING:
-                value = config_field.default
-            elif config_field.default_factory is not MISSING:
-                value = config_field.default_factory()
-            else:
-                raise KeyError(f"Missing required config key: {name}")
+        for section, keys in _CONFIG_SECTIONS.items():
+            section_data = raw_data.get(section, {})
+            if not isinstance(section_data, dict):
+                raise TypeError(f"Config section [{section}] must contain a YAML mapping")
+            unknown_keys = sorted(set(section_data) - set(keys))
+            if unknown_keys:
+                paths = ", ".join(f"{section}.{key}" for key in unknown_keys)
+                raise KeyError(f"Unknown config keys: {paths}")
 
-            cls._validate_type(name, value, config_field.type)
-            if name == "sanic_workers" and value < 1:
-                raise ValueError("Config key [sanic_workers] must be greater than or equal to 1")
-            values[name] = value
+            for key, name in keys.items():
+                config_field = config_fields[name]
+                path = f"{section}.{key}"
+                if key in section_data:
+                    value = section_data[key]
+                elif config_field.default is not MISSING:
+                    value = config_field.default
+                elif config_field.default_factory is not MISSING:
+                    value = config_field.default_factory()
+                else:
+                    raise KeyError(f"Missing required config key: {path}")
+
+                cls._validate_type(path, value, config_field.type)
+                if name == "sanic_workers" and value < 1:
+                    raise ValueError(f"Config key [{path}] must be greater than or equal to 1")
+                values[name] = value
 
         return values
 

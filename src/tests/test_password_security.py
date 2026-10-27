@@ -10,9 +10,9 @@ if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
 from core.constants import UserStatus
-from domains.identity_access.application.use_cases.auth import AuthService
-from domains.identity_access.domain.errors import AuthenticationFailedError
-from domains.identity_access.domain.request_meta import RequestMeta
+from domains.identity_access.services.auth import AuthService
+from domains.identity_access.errors import AuthenticationFailedError
+from domains.identity_access.audit import RequestMeta
 from infra.security.passwords import generate_openid, hash_password, needs_rehash, verify_password
 
 

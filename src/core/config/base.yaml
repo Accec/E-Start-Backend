@@ -1,5 +1,13 @@
 # yaml-language-server: $schema=./schema.json
-timezone: UTC
-jwt_exp_time: 86400
-migrations_path: migrations
-sanic_workers: 1
+
+app:
+  timezone: UTC
+
+server:
+  workers: 1
+
+paths:
+  migrations: migrations
+
+jwt:
+  exp_time: 86400

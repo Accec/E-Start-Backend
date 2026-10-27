@@ -1,12 +1,15 @@
+import ast
+import importlib.util
 import os
-import subprocess
-import tempfile
-import py_compile
 import re
 import sys
 import unittest
 import json
+import subprocess
+import tempfile
+import textwrap
 from pathlib import Path
+from typing import get_type_hints
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -27,10 +30,30 @@ TEXT_FILE_SUFFIXES = {
 }
 
 
+DOMAIN_RESOURCES = {
+    "identity_access": ("auth", "dashboard", "users", "roles", "permissions", "endpoints"),
+    "audit": ("logs",),
+    "operations": ("jobs",),
+}
+
+
+def imported_modules(path):
+    package = ".".join(path.relative_to(SRC).parts[:-1])
+    modules = set()
+    for node in ast.walk(ast.parse(path.read_text(encoding="utf-8"))):
+        if isinstance(node, ast.Import):
+            modules.update(alias.name for alias in node.names)
+        elif isinstance(node, ast.ImportFrom):
+            name = "." * node.level + (node.module or "")
+            module = importlib.util.resolve_name(name, package) if node.level else name
+            modules.add(module)
+            modules.update(f"{module}.{alias.name}" for alias in node.names if alias.name != "*")
+    return modules
+
+
 class TestRefactorStructure(unittest.TestCase):
     def test_expected_top_level_directories_exist(self):
         expected = [
-            "app/bootstrap",
             "core",
             "infra",
             "domains",
@@ -43,30 +66,23 @@ class TestRefactorStructure(unittest.TestCase):
                 self.assertTrue((SRC / rel).exists(), rel)
 
     def test_expected_bounded_contexts_exist(self):
-        expected = [
-            "domains/identity_access/application",
-            "domains/identity_access/application/use_cases",
-            "domains/identity_access/domain",
-            "domains/identity_access/infrastructure",
-            "domains/identity_access/infrastructure/repos",
-            "domains/identity_access/presentation/http",
-            "domains/identity_access/presentation/schemas",
-            "domains/audit/application",
-            "domains/audit/application/ports.py",
-            "domains/audit/domain",
-            "domains/audit/infrastructure",
-            "domains/audit/presentation/http",
-            "domains/audit/presentation/schemas",
-            "domains/operations/application",
-            "domains/operations/application/ports.py",
-            "domains/operations/domain",
-            "domains/operations/infrastructure",
-            "domains/operations/presentation/http",
-            "domains/operations/presentation/schemas",
-        ]
-        for rel in expected:
-            with self.subTest(path=rel):
-                self.assertTrue((SRC / rel).exists(), rel)
+        expected = {
+            "identity_access": ("services", "repositories", "models.py", "ports.py", "errors.py",
+                                "policies.py", "audit.py", "cache.py", "security.py"),
+            "audit": ("services/logs.py", "repositories/logs.py", "models.py", "ports.py", "records.py"),
+            "operations": ("services/jobs.py", "ports.py", "jobs.py", "scheduler_gateway.py"),
+        }
+        for domain, paths in expected.items():
+            with self.subTest(service_package=domain):
+                self.assertTrue((SRC / "domains" / domain / "services").is_dir())
+                self.assertFalse((SRC / "domains" / domain / "services.py").exists())
+            for rel in (*paths, "controller/router.py"):
+                with self.subTest(domain=domain, path=rel):
+                    self.assertTrue((SRC / "domains" / domain / rel).exists())
+        for domain in ("identity_access", "audit"):
+            with self.subTest(repository_package=domain):
+                self.assertTrue((SRC / "domains" / domain / "repositories").is_dir())
+                self.assertFalse((SRC / "domains" / domain / "repositories.py").exists())
 
     def test_yaml_config_files_exist(self):
         expected = [
@@ -187,172 +203,150 @@ class TestRefactorStructure(unittest.TestCase):
                     contents = path.read_text(encoding="utf-8")
                     self.assertNotRegex(contents, r"[\u4e00-\u9fff]")
 
-    def test_key_modules_compile(self):
-        key_modules = [
-            "main.py",
-            "app/bootstrap/application.py",
-            "app/bootstrap/audit.py",
-            "app/bootstrap/container.py",
-            "app/bootstrap/routes.py",
-            "app/bootstrap/routing.py",
-            "app/bootstrap/runtime.py",
-            "app/bootstrap/database.py",
-            "app/bootstrap/migrations.py",
-            "app/bootstrap/identity_access.py",
-            "app/bootstrap/operations.py",
-            "core/api_schema.py",
-            "core/config/__init__.py",
-            "core/http.py",
-            "core/pagination.py",
-            "core/persistence.py",
-            "infra/security/jwt.py",
-            "infra/security/passwords.py",
-            "infra/scheduler/base.py",
-            "infra/scheduler/jobs/update_endpoint/task.py",
-            "infra/scheduler/tasks/demo/task.py",
-            "infra/web/health.py",
-            "infra/web/route_catalog.py",
-            "infra/verification/email.py",
-            "infra/verification/captcha.py",
-            "domains/identity_access/application/authorization.py",
-            "domains/identity_access/application/contracts.py",
-            "domains/identity_access/application/ports.py",
-            "domains/identity_access/application/use_cases/bootstrap.py",
-            "domains/identity_access/application/use_cases/auth.py",
-            "domains/identity_access/application/use_cases/dashboard.py",
-            "domains/identity_access/application/use_cases/endpoint_registry.py",
-            "domains/identity_access/application/use_cases/users.py",
-            "domains/identity_access/application/use_cases/roles.py",
-            "domains/identity_access/application/use_cases/permissions.py",
-            "domains/identity_access/application/use_cases/endpoints.py",
-            "domains/identity_access/domain/request_meta.py",
-            "domains/identity_access/domain/selectors.py",
-            "domains/identity_access/infrastructure/models.py",
-            "domains/identity_access/infrastructure/repos/users.py",
-            "domains/identity_access/infrastructure/repos/roles.py",
-            "domains/identity_access/infrastructure/repos/permissions.py",
-            "domains/identity_access/infrastructure/repos/endpoints.py",
-            "domains/identity_access/infrastructure/security.py",
-            "domains/identity_access/infrastructure/cache.py",
-            "domains/identity_access/presentation/http/support.py",
-            "domains/identity_access/presentation/http/user/auth.py",
-            "domains/identity_access/presentation/http/user/dashboard.py",
-            "domains/identity_access/presentation/http/admin/users.py",
-            "domains/identity_access/presentation/http/admin/roles.py",
-            "domains/identity_access/presentation/http/admin/permissions.py",
-            "domains/identity_access/presentation/http/admin/endpoints.py",
-            "domains/audit/application/logs.py",
-            "domains/audit/application/ports.py",
-            "domains/audit/domain/logs.py",
-            "domains/audit/infrastructure/models.py",
-            "domains/audit/presentation/http/admin/logs.py",
-            "domains/operations/application/jobs.py",
-            "domains/operations/application/ports.py",
-            "domains/operations/domain/jobs.py",
-            "domains/operations/presentation/http/admin/jobs.py",
-            "middleware/request_handling/request_handling.py",
-            "scripts/ops/cli.py",
-            "tests/test_health_checks.py",
-            "tests/test_logging_configuration.py",
-            "tests/test_pagination.py",
-            "tests/test_password_security.py",
-            "tests/test_request_handling.py",
-            "tests/test_runtime_multiworker.py",
-        ]
-        for rel in key_modules:
-            with self.subTest(module=rel):
-                py_compile.compile(str(SRC / rel), doraise=True)
+    def test_source_modules_compile(self):
+        for path in SRC.rglob("*.py"):
+            with self.subTest(module=path.relative_to(SRC).as_posix()):
+                compile(path.read_text(encoding="utf-8"), str(path), "exec")
 
     def test_legacy_context_directories_removed(self):
-        legacy_paths = [
-            "domains/user",
-            "domains/rbac",
-            "domains/ops",
-            "domains/audit/api",
-            "domains/audit/schemas",
-            "domains/audit/models.py",
-        ]
-        for rel in legacy_paths:
-            with self.subTest(path=rel):
-                self.assertFalse((SRC / rel).exists(), rel)
+        for rel in ("domains/user", "domains/rbac", "domains/ops", "domains/audit/api", "domains/audit/schemas"):
+            self.assertFalse((SRC / rel).exists(), rel)
+        for domain in DOMAIN_RESOURCES:
+            for layer in ("application", "domain", "infrastructure", "presentation"):
+                with self.subTest(domain=domain, layer=layer):
+                    self.assertFalse((SRC / "domains" / domain / layer).exists())
 
     def test_unused_shadowing_exception_module_is_removed(self):
         self.assertFalse((SRC / "core/exceptions.py").exists())
 
-    def test_main_uses_new_layers(self):
-        content = (SRC / "main.py").read_text(encoding="utf-8")
-        self.assertIn('if args.command == "server"', content)
-        self.assertIn('if args.command == "scheduler"', content)
-        self.assertIn("from app.bootstrap import start_http_server", content)
-        self.assertIn("from app.bootstrap import start_scheduler", content)
-        self.assertIn("start_http_server", content)
-        self.assertIn("start_scheduler", content)
-        self.assertIn("from scripts.ops import cli", content)
-        self.assertNotIn("asyncio.run(start_http_server())", content)
-        self.assertNotIn("from app.bootstrap import start_http_server, start_scheduler", content)
-        self.assertNotIn("from core.config import Config", content)
-        self.assertNotIn("from infra.scheduler import Scheduler", content)
-        self.assertNotIn("from infra.security import JwtAuth", content)
+    def test_application_entrypoints_are_plain_functions(self):
+        self.assertTrue((SRC / "app.py").is_file())
+        self.assertFalse((SRC / "app").exists())
+        expected = {
+            "app.py": {"create_app", "create_http_app"},
+            "main.py": {"start_http_server", "start_scheduler", "cli"},
+        }
+        for filename, names in expected.items():
+            with self.subTest(module=filename):
+                tree = ast.parse((SRC / filename).read_text(encoding="utf-8"))
+                functions = {
+                    node.name for node in tree.body
+                    if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+                }
+                self.assertTrue(names <= functions)
+                self.assertFalse(any(isinstance(node, ast.ClassDef) for node in ast.walk(tree)))
 
-    def test_bootstrap_package_uses_lazy_exports(self):
-        content = (SRC / "app/bootstrap/__init__.py").read_text(encoding="utf-8")
-        self.assertIn("from importlib import import_module", content)
-        self.assertIn("def __getattr__", content)
-        self.assertIn("_EXPORT_MAP", content)
-        self.assertNotIn("from .routes import get_blueprints", content)
-        self.assertNotIn("from .runtime import ApplicationRuntime", content)
-        self.assertNotIn("from .container import ApplicationBootstrap", content)
+    def test_domains_and_infrastructure_do_not_import_entrypoints(self):
+        for root in (SRC / "domains", SRC / "infra"):
+            for path in root.rglob("*.py"):
+                with self.subTest(module=path.relative_to(SRC).as_posix()):
+                    self.assertFalse({module.split(".")[0] for module in imported_modules(path)} & {"app", "main"})
 
-    def test_runtime_bootstrap_owns_server_and_scheduler_wiring(self):
-        content = (SRC / "app/bootstrap/runtime.py").read_text(encoding="utf-8")
-        container_content = (SRC / "app/bootstrap/container.py").read_text(encoding="utf-8")
-        application_content = (SRC / "app/bootstrap/application.py").read_text(encoding="utf-8")
-        self.assertIn("class ApplicationRuntime", content)
-        self.assertIn("bootstrap: ApplicationBootstrap", content)
-        self.assertIn("def build_runtime", content)
-        self.assertIn("def build_http_server", content)
-        self.assertIn("def build_scheduler", content)
-        self.assertIn("def resolve_bootstrap", content)
-        self.assertIn("def setup_logging", content)
-        self.assertIn("async def init_scheduler_application", content)
-        self.assertIn("async def start_single_worker_http_server", content)
-        self.assertIn("def start_multi_worker_http_server", content)
-        self.assertIn("def start_http_server", content)
-        self.assertIn("async def start_scheduler", content)
-        self.assertIn("def build_http_server_from_config", content)
-        self.assertIn("request_handling", content)
-        self.assertIn("get_blueprints", content)
-        self.assertIn("build_bootstrap", content)
-        self.assertIn("self.bootstrap = build_bootstrap(self.config)", content)
-        self.assertIn("return self.resolve_bootstrap().operations.scheduler", content)
-        self.assertIn("if self.config.sanic_workers == 1", content)
-        self.assertIn("AppLoader(factory=server_factory)", content)
-        self.assertIn("Sanic.serve(primary=primary", content)
-        self.assertNotIn("def bind_http_server_lifecycle", content)
-        self.assertNotIn("def should_embed_scheduler", content)
-        self.assertNotIn("scheduler.run_by_async()", content)
-        self.assertNotIn("app.add_task(scheduler.run_by_async())", content)
-        self.assertIn("class ApplicationBootstrap", container_content)
-        self.assertIn("def build_bootstrap", container_content)
-        self.assertNotIn("config = Config()", content)
-        self.assertIn("def create_app(config: Config)", application_content)
-        self.assertNotIn("config = Config()", application_content)
+    def test_domain_package_markers_have_no_imports_or_runtime_logic(self):
+        for path in (SRC / "domains").rglob("__init__.py"):
+            with self.subTest(module=path.relative_to(SRC).as_posix()):
+                tree = ast.parse(path.read_text(encoding="utf-8"))
+                self.assertTrue(all(
+                    isinstance(node, ast.Expr) and isinstance(node.value, ast.Constant)
+                    and isinstance(node.value.value, str)
+                    for node in tree.body
+                ))
+
+    def test_production_modules_do_not_reference_retired_domain_layers(self):
+        for path in SRC.rglob("*.py"):
+            if "tests" in path.relative_to(SRC).parts:
+                continue
+            tree = ast.parse(path.read_text(encoding="utf-8"))
+            names = imported_modules(path) | {
+                node.value for node in ast.walk(tree)
+                if isinstance(node, ast.Constant) and isinstance(node.value, str)
+                and node.value.startswith(("domains.", "app.bootstrap"))
+            }
+            with self.subTest(module=path.relative_to(SRC).as_posix()):
+                for name in names:
+                    parts = name.split(".")
+                    self.assertFalse(name.startswith("app.bootstrap"))
+                    if len(parts) > 2 and parts[0] == "domains":
+                        self.assertNotIn(parts[2], {"application", "domain", "infrastructure", "presentation"})
+
+    def test_domain_module_import_graph_has_no_cycles(self):
+        paths = {}
+        for path in (SRC / "domains").rglob("*.py"):
+            relative = path.relative_to(SRC).with_suffix("")
+            parts = relative.parts[:-1] if path.name == "__init__.py" else relative.parts
+            paths[".".join(parts)] = path
+        graph = {name: imported_modules(path) & paths.keys() for name, path in paths.items()}
+        visited = set()
+
+        def visit(name, chain):
+            self.assertNotIn(name, chain, " -> ".join((*chain, name)))
+            if name in visited:
+                return
+            for dependency in sorted(graph[name]):
+                visit(dependency, (*chain, name))
+            visited.add(name)
+
+        for name in sorted(graph):
+            visit(name, ())
+
+    def test_fresh_imports_do_not_construct_runtime_resources(self):
+        modules = []
+        for path in (SRC / "domains").rglob("*.py"):
+            relative = path.relative_to(SRC).with_suffix("")
+            parts = relative.parts[:-1] if path.name == "__init__.py" else relative.parts
+            modules.append(".".join(parts))
+        modules.extend(("app", "main", "scripts.ops.cli", "infra.database"))
+        script = textwrap.dedent("""
+            import importlib
+            import json
+            import sys
+            from contextlib import ExitStack
+            from unittest.mock import patch
+
+            sys.path.insert(0, sys.argv[1])
+            targets = (
+                "tortoise.Tortoise.init",
+                "tortoise.backends.base.client.BaseDBAsyncClient.__init__",
+                "redis.asyncio.ConnectionPool.__init__",
+                "infra.redis.RedisClient.__init__",
+                "infra.scheduler.Scheduler.__init__",
+                "sanic.Sanic.__init__",
+            )
+            with ExitStack() as stack:
+                for target in targets:
+                    stack.enter_context(patch(target, side_effect=AssertionError(target)))
+                for module in json.loads(sys.argv[2]):
+                    importlib.import_module(module)
+        """)
+        for reverse in (False, True):
+            with self.subTest(reverse=reverse):
+                result = subprocess.run(
+                    [sys.executable, "-B", "-c", script, str(SRC),
+                     json.dumps(sorted(set(modules), reverse=reverse))],
+                    cwd=ROOT, text=True, capture_output=True, timeout=30,
+                )
+                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
     def test_config_includes_sanic_worker_settings(self):
-        config_content = (SRC / "core/config/__init__.py").read_text(encoding="utf-8")
-        base_yaml = (SRC / "core/config/base.yaml").read_text(encoding="utf-8")
-        sample_yaml = (SRC / "core/config/sample.yaml").read_text(encoding="utf-8")
-        schema = json.loads((SRC / "core/config/schema.json").read_text(encoding="utf-8"))
+        import yaml
 
-        self.assertIn("sanic_workers: int = 1", config_content)
-        self.assertIn("sanic_workers: 1", base_yaml)
-        self.assertIn("sanic_workers: 1", sample_yaml)
-        self.assertIn("sanic_workers", schema["properties"])
-        self.assertEqual(schema["properties"]["sanic_workers"]["minimum"], 1)
+        sys.path.insert(0, str(SRC))
+        try:
+            from core.config import ConfigModel
+
+            self.assertEqual(ConfigModel().sanic_workers, 1)
+            for filename in ("base.yaml", "sample.yaml"):
+                with self.subTest(config=filename):
+                    values = yaml.safe_load((SRC / "core/config" / filename).read_text(encoding="utf-8"))
+                    self.assertEqual(values["server"]["workers"], 1)
+            schema = json.loads((SRC / "core/config/schema.json").read_text(encoding="utf-8"))
+            self.assertEqual(schema["properties"]["server"]["properties"]["workers"]["minimum"], 1)
+        finally:
+            sys.path.pop(0)
 
     def test_request_handling_only_enriches_context_and_logs_safely(self):
         content = (SRC / "middleware/request_handling/request_handling.py").read_text(encoding="utf-8")
-        support_content = (SRC / "domains/identity_access/presentation/http/support.py").read_text(encoding="utf-8")
+        support_content = (SRC / "domains/identity_access/controller/support.py").read_text(encoding="utf-8")
         rate_limit_content = (SRC / "infra/security/rate_limit.py").read_text(encoding="utf-8")
         jwt_content = (SRC / "infra/security/jwt.py").read_text(encoding="utf-8")
 
@@ -367,11 +361,11 @@ class TestRefactorStructure(unittest.TestCase):
 
     def test_pagination_returns_structured_page_result(self):
         content = (SRC / "core/pagination.py").read_text(encoding="utf-8")
-        users_controller = (SRC / "domains/identity_access/presentation/http/admin/users.py").read_text(encoding="utf-8")
-        roles_controller = (SRC / "domains/identity_access/presentation/http/admin/roles.py").read_text(encoding="utf-8")
-        permissions_controller = (SRC / "domains/identity_access/presentation/http/admin/permissions.py").read_text(encoding="utf-8")
-        endpoints_controller = (SRC / "domains/identity_access/presentation/http/admin/endpoints.py").read_text(encoding="utf-8")
-        audit_repository = (SRC / "domains/audit/infrastructure/repositories.py").read_text(encoding="utf-8")
+        users_controller = (SRC / "domains/identity_access/controller/users/api.py").read_text(encoding="utf-8")
+        roles_controller = (SRC / "domains/identity_access/controller/roles/api.py").read_text(encoding="utf-8")
+        permissions_controller = (SRC / "domains/identity_access/controller/permissions/api.py").read_text(encoding="utf-8")
+        endpoints_controller = (SRC / "domains/identity_access/controller/endpoints/api.py").read_text(encoding="utf-8")
+        audit_repository = (SRC / "domains/audit/repositories/logs.py").read_text(encoding="utf-8")
 
         self.assertIn("class PageResult", content)
         self.assertIn("return PageResult(", content)
@@ -381,56 +375,21 @@ class TestRefactorStructure(unittest.TestCase):
         self.assertIn("page_result = await self.endpoint_service.list_endpoints", endpoints_controller)
         self.assertIn("page_result = await paginate_query", audit_repository)
 
-    def test_routes_are_explicitly_registered(self):
-        content = (SRC / "app/bootstrap/routes.py").read_text(encoding="utf-8")
-        self.assertIn("def build_blueprints", content)
-        self.assertIn("def register_routes", content)
-        self.assertIn("register_identity_access_routes", content)
-        self.assertIn("register_audit_routes", content)
-        self.assertIn("register_operations_routes", content)
-        self.assertIn("register_health_routes", content)
-        self.assertIn("ApplicationBootstrap", content)
-        self.assertIn('Blueprint(name="system"', content)
-        self.assertNotIn("_routes_registered", content)
-        self.assertNotIn("UserBlueprint =", content)
-        self.assertNotIn("AdminBlueprint =", content)
-        self.assertNotIn("def load_routes", content)
-        self.assertNotIn("# noqa: F401", content)
-
-    def test_identity_access_is_assembled_through_bootstrap(self):
-        bootstrap_content = (SRC / "app/bootstrap/identity_access.py").read_text(encoding="utf-8")
-        container_content = (SRC / "app/bootstrap/container.py").read_text(encoding="utf-8")
-        ports_content = (SRC / "domains/identity_access/application/ports.py").read_text(encoding="utf-8")
-        auth_content = (SRC / "domains/identity_access/application/use_cases/auth.py").read_text(encoding="utf-8")
-        users_content = (SRC / "domains/identity_access/application/use_cases/users.py").read_text(encoding="utf-8")
-        bootstrap_use_case_content = (SRC / "domains/identity_access/application/use_cases/bootstrap.py").read_text(encoding="utf-8")
-        authorization_content = (SRC / "domains/identity_access/application/authorization.py").read_text(encoding="utf-8")
-        user_auth_handler_content = (SRC / "domains/identity_access/presentation/http/user/auth.py").read_text(encoding="utf-8")
-
-        self.assertIn("class IdentityAccessBootstrap", bootstrap_content)
-        self.assertIn("@dataclass(slots=True)", bootstrap_content)
-        self.assertIn("config: Config", bootstrap_content)
-        self.assertIn("user_repository: UserRepository", bootstrap_content)
-        self.assertIn("auth_service: AuthService", bootstrap_content)
-        self.assertIn("jwt_auth: JwtAuth", bootstrap_content)
-        self.assertIn("IdentityAccessBootstrap(", container_content)
-        self.assertIn("AuthorizationService(", container_content)
-        self.assertIn("AuthService(", container_content)
-        self.assertIn("UserAdminService(", container_content)
-        self.assertIn("JwtAuth(", container_content)
-        self.assertIn("class AuditLogWriter", ports_content)
-        self.assertNotIn("cached_property", bootstrap_content)
-        self.assertNotIn("infra.security.passwords", auth_content)
-        self.assertNotIn("infra.security.passwords", users_content)
-        self.assertNotIn("infra.security.passwords", bootstrap_use_case_content)
-        self.assertNotIn("from infra.redis import RedisClient", authorization_content)
-        self.assertNotIn("AuditLogService()", auth_content)
-        self.assertNotIn("AuditLogService()", users_content)
-        self.assertNotIn("AuditLogService()", authorization_content)
-        self.assertNotIn("audit_logs", auth_content)
-        self.assertNotIn("audit_logs", users_content)
-        self.assertNotIn("audit_logs", authorization_content)
-        self.assertNotIn("from app.bootstrap.identity_access import", user_auth_handler_content)
+    def test_services_depend_on_ports_not_concrete_adapters(self):
+        paths = list(SRC.glob("domains/*/services/*.py"))
+        self.assertGreater(len(paths), 2)
+        for path in paths:
+            with self.subTest(module=path.relative_to(SRC).as_posix()):
+                modules = imported_modules(path)
+                if path.name != "__init__.py":
+                    self.assertTrue(any("ports" in module.split(".") for module in modules))
+                for module in modules:
+                    parts = module.split(".")
+                    self.assertNotIn(parts[0], {"app", "main", "infra", "sanic", "sanic_ext", "tortoise", "redis"})
+                    if parts[0] == "domains":
+                        self.assertFalse(set(parts[2:]) & {
+                            "models", "repositories", "cache", "security", "scheduler_gateway", "controller",
+                        })
 
     def test_scheduler_uses_current_infra_paths(self):
         content = (SRC / "infra/scheduler/base.py").read_text(encoding="utf-8")
@@ -461,76 +420,61 @@ class TestRefactorStructure(unittest.TestCase):
         self.assertIn("@add_task(", task_content)
 
     def test_operations_context_uses_domain_job_contracts(self):
-        application_content = (SRC / "domains/operations/application/jobs.py").read_text(encoding="utf-8")
-        ports_content = (SRC / "domains/operations/application/ports.py").read_text(encoding="utf-8")
-        domain_content = (SRC / "domains/operations/domain/jobs.py").read_text(encoding="utf-8")
-        handler_content = (SRC / "domains/operations/presentation/http/admin/jobs.py").read_text(encoding="utf-8")
-        bootstrap_content = (SRC / "app/bootstrap/operations.py").read_text(encoding="utf-8")
-        container_content = (SRC / "app/bootstrap/container.py").read_text(encoding="utf-8")
-        gateway_content = (SRC / "domains/operations/infrastructure/scheduler_gateway.py").read_text(encoding="utf-8")
+        application_content = (SRC / "domains/operations/services/jobs.py").read_text(encoding="utf-8")
+        ports_content = (SRC / "domains/operations/ports.py").read_text(encoding="utf-8")
+        domain_content = (SRC / "domains/operations/jobs.py").read_text(encoding="utf-8")
+        handler_content = (SRC / "domains/operations/controller/jobs/api.py").read_text(encoding="utf-8")
+        gateway_content = (SRC / "domains/operations/scheduler_gateway.py").read_text(encoding="utf-8")
 
         self.assertIn("SchedulerJob", application_content)
         self.assertIn("SchedulerJobUpdate", application_content)
         self.assertIn("class SchedulerJobsPort", ports_content)
-        self.assertIn("SchedulerJobUpdate", handler_content)
         self.assertIn("class SchedulerJob", domain_content)
         self.assertIn("class SchedulerJobUpdate", domain_content)
-        self.assertIn("class OperationsBootstrap", bootstrap_content)
-        self.assertIn("@dataclass(slots=True)", bootstrap_content)
-        self.assertIn("scheduler: Scheduler", bootstrap_content)
-        self.assertIn("scheduler_gateway: SchedulerGateway", bootstrap_content)
-        self.assertIn("scheduler_job_service: SchedulerJobService", bootstrap_content)
-        self.assertIn("OperationsBootstrap(", container_content)
-        self.assertIn("SchedulerJobService(jobs=scheduler_gateway)", container_content)
         self.assertNotIn("from ..infrastructure", application_content)
         self.assertNotIn("def set_job", gateway_content)
-        self.assertNotIn("from app.bootstrap.operations import", handler_content)
 
     def test_audit_context_uses_domain_log_contracts(self):
-        bootstrap_content = (SRC / "app/bootstrap/audit.py").read_text(encoding="utf-8")
-        container_content = (SRC / "app/bootstrap/container.py").read_text(encoding="utf-8")
-        ports_content = (SRC / "domains/audit/application/ports.py").read_text(encoding="utf-8")
-        domain_content = (SRC / "domains/audit/domain/logs.py").read_text(encoding="utf-8")
-        application_content = (SRC / "domains/audit/application/logs.py").read_text(encoding="utf-8")
-        repository_content = (SRC / "domains/audit/infrastructure/repositories.py").read_text(encoding="utf-8")
-        handler_content = (SRC / "domains/audit/presentation/http/admin/logs.py").read_text(encoding="utf-8")
+        ports_content = (SRC / "domains/audit/ports.py").read_text(encoding="utf-8")
+        domain_content = (SRC / "domains/audit/records.py").read_text(encoding="utf-8")
+        application_content = (SRC / "domains/audit/services/logs.py").read_text(encoding="utf-8")
+        repository_content = (SRC / "domains/audit/repositories/logs.py").read_text(encoding="utf-8")
+        handler_content = (SRC / "domains/audit/controller/logs/api.py").read_text(encoding="utf-8")
 
-        self.assertIn("class AuditBootstrap", bootstrap_content)
-        self.assertIn("@dataclass(slots=True)", bootstrap_content)
-        self.assertIn("audit_log_repository: AuditLogRepository", bootstrap_content)
-        self.assertIn("audit_log_service: AuditLogService", bootstrap_content)
-        self.assertIn("AuditBootstrap(", container_content)
-        self.assertIn("AuditLogService(logs=audit_log_repository)", container_content)
         self.assertIn("class AuditLogStore", ports_content)
         self.assertIn("class AuditLogRecord", domain_content)
-        self.assertIn("class AuditLogQuery", domain_content)
         self.assertIn("class AuditLogPage", domain_content)
         self.assertIn("AuditLogRecord", application_content)
-        self.assertIn("AuditLogQuery", application_content)
         self.assertNotIn("from ..infrastructure", application_content)
         self.assertIn("AuditLogPage", repository_content)
-        self.assertIn("AuditLogQuery", handler_content)
         self.assertNotIn("AuditLogService()", handler_content)
-        self.assertNotIn("from app.bootstrap.audit import", handler_content)
 
     def test_routing_requires_explicit_jwt_auth_when_authorizing(self):
-        content = (SRC / "app/bootstrap/routing.py").read_text(encoding="utf-8")
-        self.assertIn("def build_route_name", content)
-        self.assertIn("name=name or build_route_name(handler)", content)
-        self.assertIn("if jwt_auth is None", content)
-        self.assertIn('raise ValueError("jwt_auth is required when authorize=True")', content)
-        self.assertNotIn("get_jwt_auth", content)
+        sys.path.insert(0, str(SRC))
+        try:
+            try:
+                from infra.web.routing import build_route_handler
+            except ModuleNotFoundError as exc:
+                self.skipTest(f"Web dependencies are unavailable: {exc}")
+
+            async def handler(request):
+                return None
+
+            with self.assertRaisesRegex(ValueError, "jwt_auth is required"):
+                build_route_handler(handler, authorize=True)
+        finally:
+            sys.path.pop(0)
 
     def test_http_layers_use_controllers_instead_of_route_local_closures(self):
         expected = {
-            "domains/identity_access/presentation/http/user/auth.py": "class UserAuthController",
-            "domains/identity_access/presentation/http/user/dashboard.py": "class DashboardController",
-            "domains/identity_access/presentation/http/admin/users.py": "class UserAdminController",
-            "domains/identity_access/presentation/http/admin/roles.py": "class RoleAdminController",
-            "domains/identity_access/presentation/http/admin/permissions.py": "class PermissionAdminController",
-            "domains/identity_access/presentation/http/admin/endpoints.py": "class EndpointAdminController",
-            "domains/audit/presentation/http/admin/logs.py": "class AuditLogController",
-            "domains/operations/presentation/http/admin/jobs.py": "class SchedulerJobsController",
+            "domains/identity_access/controller/auth/api.py": "class UserAuthController",
+            "domains/identity_access/controller/dashboard/api.py": "class DashboardController",
+            "domains/identity_access/controller/users/api.py": "class UserAdminController",
+            "domains/identity_access/controller/roles/api.py": "class RoleAdminController",
+            "domains/identity_access/controller/permissions/api.py": "class PermissionAdminController",
+            "domains/identity_access/controller/endpoints/api.py": "class EndpointAdminController",
+            "domains/audit/controller/logs/api.py": "class AuditLogController",
+            "domains/operations/controller/jobs/api.py": "class SchedulerJobsController",
         }
         for rel, controller_name in expected.items():
             with self.subTest(path=rel):
@@ -538,117 +482,118 @@ class TestRefactorStructure(unittest.TestCase):
                 self.assertIn(controller_name, content)
                 self.assertNotIn("async def register_routes", content)
 
-    def test_prefixed_http_and_schema_files_are_removed(self):
-        removed_files = [
-            "domains/identity_access/presentation/http/user_auth.py",
-            "domains/identity_access/presentation/http/dashboard.py",
-            "domains/identity_access/presentation/http/admin_users.py",
-            "domains/identity_access/presentation/http/admin_roles.py",
-            "domains/identity_access/presentation/http/admin_permissions.py",
-            "domains/identity_access/presentation/http/admin_endpoints.py",
-            "domains/identity_access/presentation/schemas/user_auth.py",
-            "domains/identity_access/presentation/schemas/dashboard.py",
-            "domains/identity_access/presentation/schemas/admin_users.py",
-            "domains/identity_access/presentation/schemas/admin_roles.py",
-            "domains/identity_access/presentation/schemas/admin_permissions.py",
-            "domains/identity_access/presentation/schemas/admin_endpoints.py",
-            "domains/audit/presentation/http/admin_logs.py",
-            "domains/audit/presentation/schemas/admin_logs.py",
-            "domains/operations/presentation/http/admin_jobs.py",
-            "domains/operations/presentation/schemas/admin_jobs.py",
-        ]
-        for rel in removed_files:
-            with self.subTest(path=rel):
-                self.assertFalse((SRC / rel).exists(), rel)
-
-    def test_presentation_packages_own_route_group_registration(self):
-        identity_http_content = (SRC / "domains/identity_access/presentation/http/__init__.py").read_text(encoding="utf-8")
-        identity_admin_content = (SRC / "domains/identity_access/presentation/http/admin/__init__.py").read_text(
-            encoding="utf-8"
+    def test_controller_dependencies_use_concrete_service_types(self):
+        cases = (
+            ("audit", "logs", "AuditLogController", "audit_service", "services.logs", "AuditLogService"),
+            ("operations", "jobs", "SchedulerJobsController", "job_service", "services.jobs", "SchedulerJobService"),
+            ("identity_access", "auth", "UserAuthController", "auth_service", "services.auth", "AuthService"),
+            ("identity_access", "dashboard", "DashboardController", "dashboard_service",
+             "services.dashboard", "DashboardService"),
+            ("identity_access", "users", "UserAdminController", "user_service", "services.users", "UserAdminService"),
+            ("identity_access", "roles", "RoleAdminController", "role_service", "services.roles", "RoleAdminService"),
+            ("identity_access", "permissions", "PermissionAdminController", "permission_service",
+             "services.permissions", "PermissionAdminService"),
+            ("identity_access", "endpoints", "EndpointAdminController", "endpoint_service",
+             "services.endpoints", "EndpointAdminService"),
         )
-        identity_user_content = (SRC / "domains/identity_access/presentation/http/user/__init__.py").read_text(
-            encoding="utf-8"
-        )
-        audit_admin_content = (SRC / "domains/audit/presentation/http/admin/__init__.py").read_text(encoding="utf-8")
-        operations_admin_content = (SRC / "domains/operations/presentation/http/admin/__init__.py").read_text(
-            encoding="utf-8"
-        )
+        sys.path.insert(0, str(SRC))
+        try:
+            for domain, resource, controller_name, field, service_module, service_name in cases:
+                with self.subTest(controller=controller_name):
+                    module = importlib.import_module(f"domains.{domain}.controller.{resource}.api")
+                    controller = getattr(module, controller_name)
+                    service = getattr(importlib.import_module(f"domains.{domain}.{service_module}"), service_name)
+                    self.assertIs(get_type_hints(controller)[field], service)
+                    self.assertIs(get_type_hints(controller.__init__)[field], service)
+        finally:
+            sys.path.pop(0)
 
-        self.assertIn("register_admin_routes", identity_http_content)
-        self.assertIn("register_user_routes", identity_http_content)
-        self.assertNotIn("register_admin_user_routes", identity_http_content)
-        self.assertNotIn("register_user_auth_routes", identity_http_content)
-        self.assertIn("def register_routes", identity_admin_content)
-        self.assertIn("def register_routes", identity_user_content)
-        self.assertIn("def register_routes", audit_admin_content)
-        self.assertIn("def register_routes", operations_admin_content)
+    def test_controller_resources_keep_api_and_schemas_together(self):
+        for domain, resources in DOMAIN_RESOURCES.items():
+            controller = SRC / "domains" / domain / "controller"
+            actual = {path.name for path in controller.iterdir()
+                      if path.is_dir() and path.name != "__pycache__"}
+            self.assertEqual(actual, set(resources))
+            for resource in resources:
+                with self.subTest(domain=domain, resource=resource):
+                    self.assertTrue((controller / resource / "api.py").is_file())
+                    self.assertTrue((controller / resource / "schemas.py").is_file())
 
-    def test_schema_classes_use_resource_focused_names(self):
-        expected = {
-            "domains/identity_access/presentation/schemas/user/auth.py": [
-                "class LoginBody",
-                "class RegisterBody",
-                "class LoginResponse",
-                "class RegisterResponse",
-                "class AccountAlreadyExistsResponse",
-            ],
-            "domains/identity_access/presentation/schemas/user/dashboard.py": [
-                "class DashboardUser",
-                "class DashboardRole",
-                "class DashboardPermission",
-                "class DashboardEndpoint",
-                "class DashboardPayload",
-                "class DashboardResponse",
-            ],
-            "domains/identity_access/presentation/schemas/admin/users.py": [
-                "class UserSummary",
-                "class UserListQuery",
-                "class CreateUserBody",
-                "class UpdateUserBody",
-                "class AssignUserRoleBody",
-                "class RemoveUserRoleBody",
-                "class UserListResponse",
-            ],
-            "domains/identity_access/presentation/schemas/admin/roles.py": [
-                "class RoleSummary",
-                "class RoleListQuery",
-                "class CreateRoleBody",
-                "class UpdateRoleBody",
-                "class DeleteRoleBody",
-                "class AssignRolePermissionBody",
-                "class RemoveRolePermissionBody",
-                "class RoleListResponse",
-            ],
-        }
-        forbidden = [
-            "class UserPostLoginBody",
-            "class UserPostRegisterBody",
-            "class UserPostLoginSuccessfullyResponse",
-            "class UserGetDashboardUserModel",
-            "class AdminGetUsersQuery",
-            "class AdminPostUsersBody",
-            "class AdminGetRolesQuery",
-            "class AdminPostRolesBody",
-            "class AdminDeleteRolesPermissionsBody",
-        ]
-        for rel, snippets in expected.items():
-            with self.subTest(path=rel):
-                content = (SRC / rel).read_text(encoding="utf-8")
-                for snippet in snippets:
-                    self.assertIn(snippet, content)
-                for snippet in forbidden:
-                    self.assertNotIn(snippet, content)
+    def test_domain_routers_register_resources_with_explicit_dependencies(self):
+        for domain, resources in DOMAIN_RESOURCES.items():
+            router = SRC / "domains" / domain / "controller/router.py"
+            modules = imported_modules(router)
+            for resource in resources:
+                self.assertIn(f"domains.{domain}.controller.{resource}.api", modules)
+            paths = [router, *(router.parent / resource / "api.py" for resource in resources)]
+            for path in paths:
+                with self.subTest(module=path.relative_to(SRC).as_posix()):
+                    tree = ast.parse(path.read_text(encoding="utf-8"))
+                    register = next(node for node in tree.body
+                                    if isinstance(node, ast.FunctionDef) and node.name == "register_routes")
+                    self.assertIsNone(register.args.vararg)
+                    self.assertIsNone(register.args.kwarg)
+                    self.assertTrue(register.args.kwonlyargs)
+                    names = {arg.arg for arg in (*register.args.args, *register.args.kwonlyargs)}
+                    self.assertFalse(names & {"bootstrap", "container", "context", "runtime", "services"})
+                    for node in ast.walk(register):
+                        if isinstance(node, ast.Call):
+                            self.assertTrue(all(keyword.arg is not None for keyword in node.keywords))
+
+    def test_http_schemas_use_method_resource_and_parameter_location(self):
+        sys.path.insert(0, str(SRC))
+        try:
+            from pydantic import BaseModel
+            from core.api_schema import Response
+
+            names = {}
+            for path in [*SRC.glob("domains/*/controller/*/schemas.py"), *SRC.glob("domains/*/controller/common.py")]:
+                if path.name == "__init__.py":
+                    continue
+                module_name = ".".join(path.relative_to(SRC).with_suffix("").parts)
+                module = importlib.import_module(module_name)
+                for name, model in vars(module).items():
+                    if not isinstance(model, type) or not issubclass(model, BaseModel):
+                        continue
+                    if model.__module__ != module_name:
+                        continue
+                    with self.subTest(model=name):
+                        self.assertIs(names.setdefault(name, model), model, "OpenAPI name collision")
+                        self.assertFalse(issubclass(model, Response), "Reuse the shared response envelope")
+            self.assertTrue(names)
+        finally:
+            sys.path.pop(0)
+
+        input_count = 0
+        for path in SRC.glob("domains/*/controller/*/api.py"):
+            tree = ast.parse(path.read_text(encoding="utf-8"))
+            for node in ast.walk(tree):
+                if not isinstance(node, ast.Call) or not isinstance(node.func, ast.Name):
+                    continue
+                if node.func.id != "add_route":
+                    continue
+                arguments = {keyword.arg: keyword.value for keyword in node.keywords}
+                method = ast.literal_eval(arguments["methods"])[0].title()
+                for location, suffix in (("query", "Query"), ("json", "Body")):
+                    if location not in arguments:
+                        continue
+                    model = arguments[location]
+                    with self.subTest(path=path, location=location):
+                        self.assertIsInstance(model, ast.Attribute)
+                        self.assertRegex(model.attr, rf"^{method}[A-Z][A-Za-z0-9]*{suffix}$")
+                    input_count += 1
+        self.assertGreater(input_count, 0)
 
     def test_http_controller_methods_use_action_names_not_route_names(self):
         http_files = [
-            "domains/identity_access/presentation/http/user/auth.py",
-            "domains/identity_access/presentation/http/user/dashboard.py",
-            "domains/identity_access/presentation/http/admin/users.py",
-            "domains/identity_access/presentation/http/admin/roles.py",
-            "domains/identity_access/presentation/http/admin/permissions.py",
-            "domains/identity_access/presentation/http/admin/endpoints.py",
-            "domains/audit/presentation/http/admin/logs.py",
-            "domains/operations/presentation/http/admin/jobs.py",
+            "domains/identity_access/controller/auth/api.py",
+            "domains/identity_access/controller/dashboard/api.py",
+            "domains/identity_access/controller/users/api.py",
+            "domains/identity_access/controller/roles/api.py",
+            "domains/identity_access/controller/permissions/api.py",
+            "domains/identity_access/controller/endpoints/api.py",
+            "domains/audit/controller/logs/api.py",
+            "domains/operations/controller/jobs/api.py",
         ]
         forbidden_patterns = [
             r"async def admin_",
@@ -663,100 +608,112 @@ class TestRefactorStructure(unittest.TestCase):
 
     def test_presentation_helpers_centralize_schema_mapping_and_responses(self):
         core_http_content = (SRC / "core/http.py").read_text(encoding="utf-8")
-        support_content = (SRC / "domains/identity_access/presentation/http/support.py").read_text(encoding="utf-8")
-        users_controller_content = (SRC / "domains/identity_access/presentation/http/admin/users.py").read_text(
+        support_content = (SRC / "domains/identity_access/controller/support.py").read_text(encoding="utf-8")
+        users_controller_content = (SRC / "domains/identity_access/controller/users/api.py").read_text(
             encoding="utf-8"
         )
-        auth_controller_content = (SRC / "domains/identity_access/presentation/http/user/auth.py").read_text(
+        auth_controller_content = (SRC / "domains/identity_access/controller/auth/api.py").read_text(
             encoding="utf-8"
         )
 
         self.assertIn("def schema_response", core_http_content)
         self.assertIn("def schema_from", support_content)
         self.assertIn("def schema_list_from", support_content)
-        self.assertIn("def response_from", support_content)
         self.assertIn("def invalid_arguments_response", support_content)
         self.assertNotIn("def args_invalid_response", support_content)
         self.assertNotIn("from core.http import http_response", users_controller_content)
         self.assertNotIn("from core.http import http_response", auth_controller_content)
         self.assertNotIn("args_invalid_response", users_controller_content)
 
-    def test_identity_access_admin_use_cases_use_explicit_contracts(self):
-        selectors_content = (SRC / "domains/identity_access/domain/selectors.py").read_text(encoding="utf-8")
-        contracts_content = (SRC / "domains/identity_access/application/contracts.py").read_text(encoding="utf-8")
-        users_service_content = (SRC / "domains/identity_access/application/use_cases/users.py").read_text(
-            encoding="utf-8"
-        )
-        roles_service_content = (SRC / "domains/identity_access/application/use_cases/roles.py").read_text(
-            encoding="utf-8"
-        )
-        permissions_service_content = (SRC / "domains/identity_access/application/use_cases/permissions.py").read_text(
-            encoding="utf-8"
-        )
-        endpoints_service_content = (SRC / "domains/identity_access/application/use_cases/endpoints.py").read_text(
-            encoding="utf-8"
-        )
-        users_repo_content = (SRC / "domains/identity_access/infrastructure/repos/users.py").read_text(encoding="utf-8")
-        roles_repo_content = (SRC / "domains/identity_access/infrastructure/repos/roles.py").read_text(encoding="utf-8")
-        permissions_repo_content = (SRC / "domains/identity_access/infrastructure/repos/permissions.py").read_text(
-            encoding="utf-8"
-        )
-        endpoints_repo_content = (SRC / "domains/identity_access/infrastructure/repos/endpoints.py").read_text(
-            encoding="utf-8"
-        )
-        users_controller_content = (SRC / "domains/identity_access/presentation/http/admin/users.py").read_text(
-            encoding="utf-8"
-        )
+    def test_invalid_arguments_response_preserves_http_and_business_error(self):
+        sys.path.insert(0, str(SRC))
+        try:
+            from core.api_schema import ArgsInvalidResponse
+            from domains.identity_access.controller.support import invalid_arguments_response
 
-        self.assertIn("class UserListQuery", selectors_content)
-        self.assertIn("class RoleReference", selectors_content)
-        self.assertIn("class EndpointReference", selectors_content)
-        self.assertIn("class UserRoleBinding", contracts_content)
-        self.assertIn("class RolePermissionBinding", contracts_content)
-        self.assertIn("class EndpointPermissionBinding", contracts_content)
-        self.assertNotIn("list_users(self, filters: dict", users_service_content)
-        self.assertNotIn("update_user(self, user_id: int, updates: dict", users_service_content)
-        self.assertNotIn("list_roles(self, filters: dict", roles_service_content)
-        self.assertNotIn("delete_role(self, filters: dict", roles_service_content)
-        self.assertNotIn("list_permissions(self, filters: dict", permissions_service_content)
-        self.assertNotIn("delete_permission(self, filters: dict", permissions_service_content)
-        self.assertNotIn("list_endpoints(self, filters: dict", endpoints_service_content)
-        self.assertNotIn("async def list(self, filters: dict", users_repo_content)
-        self.assertNotIn("async def list(self, filters: dict", roles_repo_content)
-        self.assertNotIn("async def delete(self, filters: dict", roles_repo_content)
-        self.assertNotIn("async def list(self, filters: dict", permissions_repo_content)
-        self.assertNotIn("async def delete(self, filters: dict", permissions_repo_content)
-        self.assertNotIn("async def list(self, filters: dict", endpoints_repo_content)
-        self.assertIn("domain import RoleReference", users_controller_content)
+            response = invalid_arguments_response(ArgsInvalidResponse)
+            self.assertEqual(response.status, 400)
+            self.assertEqual(json.loads(response.body), {
+                "code": -1002,
+                "msg": "Invalid or missing arguments",
+                "results": None,
+            })
+        finally:
+            sys.path.pop(0)
+
+    def test_crud_inputs_use_explicit_typed_parameters(self):
+        self.assertFalse((SRC / "domains/identity_access/domain/selectors.py").exists())
+        self.assertFalse((SRC / "domains/identity_access/application/contracts.py").exists())
+
+        paths = []
+        for resource in ("users", "roles", "permissions", "endpoints"):
+            paths.append((SRC / f"domains/identity_access/services/{resource}.py", None))
+            paths.append((SRC / f"domains/identity_access/repositories/{resource}.py",
+                          {"find", "list", "delete"}))
+        paths.extend([
+            (SRC / "domains/identity_access/ports.py", {"find", "list", "delete"}),
+            (SRC / "domains/audit/services/logs.py", {"list_logs"}),
+            (SRC / "domains/audit/ports.py", {"list_logs"}),
+            (SRC / "domains/audit/repositories/logs.py", {"list_logs"}),
+            (SRC / "domains/operations/services/jobs.py", {"update_job"}),
+        ])
+        for path, methods in paths:
+            tree = ast.parse(path.read_text(encoding="utf-8"))
+            for node in ast.walk(tree):
+                if not isinstance(node, ast.AsyncFunctionDef):
+                    continue
+                if methods is not None and node.name not in methods:
+                    continue
+                with self.subTest(path=path, method=node.name):
+                    self.assertEqual([arg.arg for arg in node.args.args], ["self"])
+                    self.assertFalse(node.args.posonlyargs)
+                    self.assertIsNone(node.args.vararg)
+                    self.assertIsNone(node.args.kwarg)
+                    self.assertTrue(node.args.kwonlyargs)
+                    for argument in node.args.kwonlyargs:
+                        self.assertIsNotNone(argument.annotation, argument.arg)
 
     def test_endpoint_sync_job_uses_application_service_instead_of_orm(self):
         content = (SRC / "infra/scheduler/jobs/update_endpoint/task.py").read_text(encoding="utf-8")
         self.assertIn("EndpointRegistrySyncService", content)
         self.assertIn("SanicRouteCatalog", content)
-        self.assertNotIn("domains.identity_access.infrastructure.models", content)
+        self.assertNotIn("domains.identity_access.models", content)
         self.assertNotIn("import sanic", content)
         self.assertNotIn("Endpoint.create", content)
 
     def test_config_loader_uses_yaml(self):
         content = (SRC / "core/config/__init__.py").read_text(encoding="utf-8")
-        schema_content = (SRC / "core/config/schema.json").read_text(encoding="utf-8")
+        schema = json.loads((SRC / "core/config/schema.json").read_text(encoding="utf-8"))
         self.assertIn("yaml.safe_load", content)
-        self.assertIn("def load_config()", content)
-        self.assertIn('cls._config_dir / "base.yaml"', content)
-        self.assertIn('cls._config_dir / "sample.yaml"', content)
-        self.assertIn("@dataclass", content)
-        self.assertIn("class ConfigModel", content)
-        self.assertIn("def apply_runtime_paths", content)
-        self.assertNotRegex(content, re.compile(r"^\s*_instance\s*=", re.MULTILINE))
-        self.assertNotRegex(content, re.compile(r"^\s*def __new__\(", re.MULTILINE))
-        self.assertNotIn("SimpleNamespace", content)
-        self.assertIn('"additionalProperties": false', schema_content)
-        self.assertIn('"app"', schema_content)
-        self.assertIn('"jwt_secret_key"', schema_content)
-        self.assertIn('"migrations_path"', schema_content)
-        self.assertNotIn('"APP"', schema_content)
-        self.assertNotIn('"JwtSecretKey"', schema_content)
-        self.assertNotIn('"auto_generate_schema"', schema_content)
+        expected_sections = {
+            "app": {"name", "debug", "timezone"},
+            "server": {"host", "port", "workers", "forwarded_secret", "cors_domains"},
+            "paths": {"relative", "uploads", "logs", "migrations"},
+            "jwt": {"secret_key", "exp_time"},
+            "mysql": {"host", "port", "username", "password", "database"},
+            "redis": {"url"},
+            "tools": {"pip"},
+        }
+        self.assertEqual(set(schema["properties"]), set(expected_sections))
+        self.assertFalse(schema["additionalProperties"])
+        for name, fields in expected_sections.items():
+            with self.subTest(section=name):
+                section = schema["properties"][name]
+                self.assertEqual(section["type"], "object")
+                self.assertEqual(set(section["properties"]), fields)
+                self.assertFalse(section["additionalProperties"])
+
+        sys.path.insert(0, str(SRC))
+        try:
+            from dataclasses import is_dataclass
+            from core.config import Config, ConfigModel, load_config
+
+            self.assertTrue(is_dataclass(ConfigModel))
+            self.assertTrue(callable(load_config))
+            self.assertTrue(callable(ConfigModel.apply_runtime_paths))
+            self.assertIsNot(Config(), Config())
+        finally:
+            sys.path.pop(0)
 
     def test_yaml_config_files_reference_schema(self):
         for rel in ["core/config/base.yaml", "core/config/sample.yaml"]:
@@ -765,13 +722,12 @@ class TestRefactorStructure(unittest.TestCase):
                 self.assertEqual(first_line, "# yaml-language-server: $schema=./schema.json")
 
     def test_database_uses_explicit_orm_metadata(self):
-        database_content = (SRC / "app/bootstrap/database.py").read_text(encoding="utf-8")
-        models_content = (SRC / "domains/identity_access/infrastructure/models.py").read_text(encoding="utf-8")
-        audit_models_content = (SRC / "domains/audit/infrastructure/models.py").read_text(encoding="utf-8")
+        database_content = (SRC / "infra/database.py").read_text(encoding="utf-8")
+        models_content = (SRC / "domains/identity_access/models.py").read_text(encoding="utf-8")
+        audit_models_content = (SRC / "domains/audit/models.py").read_text(encoding="utf-8")
 
         self.assertIn("ORM_MODEL_MODULES", database_content)
         self.assertIn("cfg.app", database_content)
-        self.assertIn("class TortoiseClient", database_content)
         self.assertIn("build_tortoise_orm_config", database_content)
         self.assertIn("load_config().app", models_content)
         self.assertIn("load_config().app", audit_models_content)
@@ -786,13 +742,14 @@ class TestRefactorStructure(unittest.TestCase):
         self.assertIn("password = fields.CharField(max_length=255", models_content)
 
     def test_project_has_aerich_config(self):
-        content = PYPROJECT.read_text(encoding="utf-8")
-        self.assertIn("[tool.aerich]", content)
-        self.assertIn('tortoise_orm = "app.bootstrap.migrations.TORTOISE_ORM"', content)
-        self.assertIn('location = "./migrations"', content)
-        self.assertIn('src = "./src"', content)
+        import tomllib
 
-    def test_http_response_uses_result_key(self):
+        config = tomllib.loads(PYPROJECT.read_text(encoding="utf-8"))["tool"]["aerich"]
+        self.assertEqual(config["tortoise_orm"], "infra.database.TORTOISE_ORM")
+        self.assertEqual(config["location"], "./migrations")
+        self.assertEqual(config["src"], "./src")
+
+    def test_http_response_uses_results_key(self):
         try:
             import yaml  # noqa: F401
             import sanic  # noqa: F401
@@ -803,13 +760,13 @@ class TestRefactorStructure(unittest.TestCase):
         try:
             from core.http import http_response
 
-            payload = json.loads(http_response(0, "ok", result={"id": 1}).body)
+            payload = json.loads(http_response(0, "ok", results={"id": 1}).body)
             self.assertEqual(payload["code"], 0)
             self.assertEqual(payload["msg"], "ok")
-            self.assertEqual(payload["result"], {"id": 1})
-            self.assertNotIn("results", payload)
+            self.assertEqual(payload["results"], {"id": 1})
+            self.assertNotIn("result", payload)
             with self.assertRaises(TypeError):
-                http_response(0, "ok", results=[1, 2])
+                http_response(0, "ok", result=[1, 2])
         finally:
             sys.path.pop(0)
 
@@ -837,10 +794,10 @@ class TestRefactorStructure(unittest.TestCase):
         self.assertNotRegex(content, re.compile(r"^\s*def __new__\(", re.MULTILINE))
 
     def test_password_security_supports_verify_and_rehash(self):
-        ports_content = (SRC / "domains/identity_access/application/ports.py").read_text(encoding="utf-8")
-        security_content = (SRC / "domains/identity_access/infrastructure/security.py").read_text(encoding="utf-8")
+        ports_content = (SRC / "domains/identity_access/ports.py").read_text(encoding="utf-8")
+        security_content = (SRC / "domains/identity_access/security.py").read_text(encoding="utf-8")
         password_content = (SRC / "infra/security/passwords.py").read_text(encoding="utf-8")
-        auth_content = (SRC / "domains/identity_access/application/use_cases/auth.py").read_text(encoding="utf-8")
+        auth_content = (SRC / "domains/identity_access/services/auth.py").read_text(encoding="utf-8")
 
         self.assertIn("def verify_password", ports_content)
         self.assertIn("def needs_rehash", ports_content)
@@ -868,9 +825,9 @@ class TestRefactorStructure(unittest.TestCase):
         responses_content = (SRC / "core/responses.py").read_text(encoding="utf-8")
         api_schema_content = (SRC / "core/api_schema.py").read_text(encoding="utf-8")
         constants_content = (SRC / "core/constants.py").read_text(encoding="utf-8")
-        identity_auth_schema_content = (SRC / "domains/identity_access/presentation/schemas/user/auth.py").read_text(encoding="utf-8")
-        audit_logs_content = (SRC / "domains/audit/application/logs.py").read_text(encoding="utf-8")
-        operations_jobs_content = (SRC / "domains/operations/application/jobs.py").read_text(encoding="utf-8")
+        identity_auth_schema_content = (SRC / "domains/identity_access/controller/auth/schemas.py").read_text(encoding="utf-8")
+        audit_logs_content = (SRC / "domains/audit/services/logs.py").read_text(encoding="utf-8")
+        operations_jobs_content = (SRC / "domains/operations/services/jobs.py").read_text(encoding="utf-8")
         verification_init_content = (SRC / "infra/verification/__init__.py").read_text(encoding="utf-8")
 
         self.assertNotRegex(responses_content, re.compile(r"^TimeoutError\s*=", re.MULTILINE))
@@ -960,7 +917,7 @@ class TestRefactorStructure(unittest.TestCase):
 
         sys.path.insert(0, str(SRC))
         try:
-            from app.bootstrap.migrations import TORTOISE_ORM
+            from infra.database import TORTOISE_ORM
             from core.config import load_config
 
             app_name = load_config().app
@@ -975,7 +932,6 @@ class TestRefactorStructure(unittest.TestCase):
     def test_cli_uses_aerich_instead_of_generate_schemas(self):
         content = (SRC / "scripts/ops/cli.py").read_text(encoding="utf-8")
         self.assertIn("run_aerich_command", content)
-        self.assertIn("from app.bootstrap.container import build_bootstrap", content)
         self.assertIn('"aerich"', content)
         self.assertIn("return asyncio.run(runner())", content)
         self.assertIn("asyncio.run(check_database_connection())", content)
@@ -986,7 +942,7 @@ class TestRefactorStructure(unittest.TestCase):
         self.assertIn("def get_migration_app_dir", content)
         self.assertIn("migration_app_dir = get_migration_app_dir()", content)
         self.assertIn("for path in migration_app_dir.iterdir()", content)
-        self.assertNotIn("domains.identity_access.infrastructure.models", content)
+        self.assertNotIn("domains.identity_access.models", content)
         self.assertNotIn("from infra.security import generate_openid", content)
         self.assertNotIn('@click.option("--pre"', content)
         self.assertNotIn('command.extend(["--pre", pre])', content)
@@ -997,33 +953,6 @@ class TestRefactorStructure(unittest.TestCase):
     def test_legacy_schema_dump_is_removed(self):
         self.assertFalse((SRC / "scripts/ops/demo.sql").exists())
         self.assertFalse((ROOT / "docs" / "legacy" / "sql" / "demo.sql").exists())
-
-    def test_blueprints_can_be_imported_when_web_dependencies_are_installed(self):
-        try:
-            import yaml  # noqa: F401
-            import sanic  # noqa: F401
-            import sanic_ext  # noqa: F401
-        except ModuleNotFoundError:
-            self.skipTest("YAML or Sanic dependencies are not installed in the current interpreter")
-
-        sys.path.insert(0, str(SRC))
-        try:
-            from app.bootstrap.container import build_bootstrap
-            from app.bootstrap.routes import get_blueprints
-            from app.bootstrap.runtime import build_runtime
-            from core.config import load_config
-            from sanic import Sanic
-
-            config = load_config()
-            blueprints = get_blueprints(build_bootstrap())
-            self.assertEqual([blueprint.name for blueprint in blueprints], ["user", "admin", "system"])
-
-            Sanic._app_registry.pop(config.app, None)
-            server = build_runtime(config).build_http_server()
-            self.assertEqual(server.name, config.app)
-            Sanic._app_registry.pop(config.app, None)
-        finally:
-            sys.path.pop(0)
 
 
 if __name__ == "__main__":

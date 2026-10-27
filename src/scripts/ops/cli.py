@@ -9,9 +9,12 @@ from pathlib import Path
 import click
 from tortoise import Tortoise
 
-from app.bootstrap.container import build_bootstrap
-from app.bootstrap.database import build_tortoise_orm_config
 from core.config import load_config
+from domains.identity_access.repositories.roles import RoleRepository
+from domains.identity_access.repositories.users import UserRepository
+from domains.identity_access.security import PasswordCredentialService
+from domains.identity_access.services.bootstrap import BootstrapService
+from infra.database import build_tortoise_orm_config
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
@@ -106,7 +109,11 @@ def migration_files_exist():
 
 
 async def seed_default_roles():
-    service = build_bootstrap().identity_access.bootstrap_service
+    service = BootstrapService(
+        users=UserRepository(),
+        roles=RoleRepository(),
+        credentials=PasswordCredentialService(),
+    )
     return await service.ensure_default_roles()
 
 
@@ -234,7 +241,11 @@ def seed_identity_access():
 @click.option("--password", default=None, show_default="Random if none provided", help="The password of the new user.")
 def create_admin(username, password):
     async def create_admin_user(username, password):
-        service = build_bootstrap().identity_access.bootstrap_service
+        service = BootstrapService(
+            users=UserRepository(),
+            roles=RoleRepository(),
+            credentials=PasswordCredentialService(),
+        )
         return await service.create_admin(username=username, password=password)
 
     result = run_database_task(create_admin_user, username, password)

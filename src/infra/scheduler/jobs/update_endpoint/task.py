@@ -2,8 +2,8 @@ import logging
 
 from core.config import load_config
 from core.constants import JOB_LOGGER
-from domains.identity_access.application import EndpointRegistrySyncService
-from domains.identity_access.infrastructure.repos import EndpointRepository
+from domains.identity_access.repositories.endpoints import EndpointRepository
+from domains.identity_access.services.endpoint_registry import EndpointRegistrySyncService
 from infra.scheduler import add_interval_job
 from infra.web import SanicRouteCatalog
 

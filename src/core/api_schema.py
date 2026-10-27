@@ -31,13 +31,13 @@ class PaginatorSettings(SchemaModel):
     page_size: int = Field(default=20)
 
 
-class SuccessResponse(SchemaModel):
+class Response(SchemaModel):
     code: int = Field(default=Success.code)
     msg: str = Field(default=Success.msg)
-    result: Optional[Any] = Field(default=None)
+    results: Optional[Any] = Field(default=None)
 
 
-class PaginatedResponse(SuccessResponse):
+class PaginatedResponse(Response):
     total_items: int
     total_pages: int
 
@@ -45,7 +45,7 @@ class PaginatedResponse(SuccessResponse):
 class ErrorResponse(SchemaModel):
     code: int
     msg: str
-    result: Optional[Union[dict, list, str]] = Field(default=None)
+    results: Optional[Union[dict, list, str]] = Field(default=None)
 
 
 class RequestErrorResponse(ErrorResponse):

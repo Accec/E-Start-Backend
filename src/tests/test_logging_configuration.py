@@ -3,7 +3,9 @@ import os
 import sys
 import tempfile
 import unittest
+from dataclasses import replace
 from pathlib import Path
+from unittest.mock import Mock
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -33,8 +35,23 @@ def restore_logger(logger: logging.Logger, state):
 
 
 class LoggingConfigurationTestCase(unittest.TestCase):
+    def test_logging_creates_missing_nested_directory(self):
+        from infra.logging.base import build_handlers
+
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            logs_path = Path(tmp_dir) / "new" / "logs"
+            self.assertFalse(logs_path.exists())
+
+            handlers = build_handlers(str(logs_path), "MIDNIGHT")
+            try:
+                self.assertTrue((logs_path / "default.log").is_file())
+                self.assertEqual(len(handlers), 2)
+            finally:
+                for handler in handlers:
+                    handler.close()
+
     def test_application_loggers_mount_to_root_logger(self):
-        from app.bootstrap.logging import setup_application_loggers
+        from infra.logging import setup_application_loggers
         from core.constants import API_LOGGER, JOB_LOGGER, SCHEDULER_LOGGER, SERVER_LOGGER, TASK_LOGGER
 
         root_logger = logging.getLogger()
@@ -50,6 +67,7 @@ class LoggingConfigurationTestCase(unittest.TestCase):
             os.environ["LOG_PATH"] = tmp_dir
             sanic_logger.addHandler(logging.StreamHandler())
             try:
+                setup_application_loggers()
                 setup_application_loggers()
 
                 self.assertEqual(len(root_logger.handlers), 2)
@@ -75,8 +93,8 @@ class LoggingConfigurationTestCase(unittest.TestCase):
     def test_create_app_does_not_reinstall_sanic_default_handlers(self):
         try:
             from sanic import Sanic
-            from app.bootstrap.application import create_app
-            from app.bootstrap.logging import setup_application_loggers
+            from app import create_app
+            from infra.logging import setup_application_loggers
             from core.config import load_config
         except ModuleNotFoundError as exc:
             self.skipTest(f"Sanic dependencies are unavailable: {exc}")
@@ -98,10 +116,11 @@ class LoggingConfigurationTestCase(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as tmp_dir:
             os.environ["LOG_PATH"] = tmp_dir
+            config = replace(load_config(), app="logging_configuration_test", logs_path=tmp_dir, relative_path=False)
             try:
-                Sanic._app_registry.pop(load_config().app, None)
+                Sanic._app_registry.pop(config.app, None)
                 setup_application_loggers()
-                create_app(load_config())
+                create_app(config, redis_client=Mock(), scheduler=Mock())
 
                 self.assertEqual(sanic_root_logger.handlers, [])
                 self.assertEqual(sanic_error_logger.handlers, [])
@@ -119,7 +138,7 @@ class LoggingConfigurationTestCase(unittest.TestCase):
                 restore_logger(sanic_error_logger, logger_states["sanic.error"])
                 restore_logger(sanic_access_logger, logger_states["sanic.access"])
                 restore_logger(sanic_server_logger, logger_states["sanic.server"])
-                Sanic._app_registry.pop(load_config().app, None)
+                Sanic._app_registry.pop(config.app, None)
 
 
 if __name__ == "__main__":

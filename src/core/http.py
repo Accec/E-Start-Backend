@@ -2,12 +2,10 @@ from pydantic import BaseModel
 from sanic import response
 
 
-def http_response(code, msg="", result=None, status=200, **kwargs):
-    if result is None and "result" in kwargs:
-        result = kwargs.pop("result")
-    if "results" in kwargs:
-        raise TypeError("Use 'result' instead of 'results'")
-    output = {"code": code, "msg": msg, "result": result}
+def http_response(code, msg="", results=None, status=200, **kwargs):
+    if "result" in kwargs:
+        raise TypeError("Use 'results' instead of 'result'")
+    output = {"code": code, "msg": msg, "results": results}
     if kwargs:
         output.update(kwargs)
     return response.json(output, status=status)

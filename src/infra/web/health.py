@@ -1,14 +1,10 @@
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Awaitable, Callable
+from typing import Awaitable, Callable
 
 from tortoise import Tortoise
 
 from core.http import http_response
 from core.responses import ServiceUnavailableError, Success
-
-if TYPE_CHECKING:
-    from app.bootstrap.container import ApplicationBootstrap
-
 
 ReadinessCheck = Callable[[], Awaitable[None]]
 
@@ -28,7 +24,7 @@ class HealthController:
         return http_response(
             Success.code,
             Success.msg,
-            result={
+            results={
                 "app": self.app_name,
                 "status": "alive",
             },
@@ -53,7 +49,7 @@ class HealthController:
             return http_response(
                 Success.code,
                 Success.msg,
-                result={
+                results={
                     "app": self.app_name,
                     "status": "ready",
                     "dependencies": dependencies,
@@ -63,7 +59,7 @@ class HealthController:
         return http_response(
             ServiceUnavailableError.code,
             ServiceUnavailableError.msg,
-            result={
+            results={
                 "app": self.app_name,
                 "status": "degraded",
                 "dependencies": dependencies,
@@ -84,14 +80,14 @@ def build_redis_readiness_check(redis_client):
     return check
 
 
-def register_health_routes(system_blueprint, bootstrap: "ApplicationBootstrap"):
-    from app.bootstrap.routing import add_route
+def register_health_routes(system_blueprint, *, app_name: str, redis_client):
+    from infra.web.routing import add_route
 
     controller = HealthController(
-        app_name=bootstrap.config.app,
+        app_name=app_name,
         readiness_probes=(
             ReadinessProbe(name="database", check=check_database_readiness),
-            ReadinessProbe(name="redis", check=build_redis_readiness_check(bootstrap.identity_access.redis_client)),
+            ReadinessProbe(name="redis", check=build_redis_readiness_check(redis_client)),
         ),
     )
 
