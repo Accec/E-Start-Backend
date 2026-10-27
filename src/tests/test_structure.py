@@ -1,3 +1,6 @@
+import os
+import subprocess
+import tempfile
 import py_compile
 import re
 import sys
@@ -69,7 +72,6 @@ class TestRefactorStructure(unittest.TestCase):
         expected = [
             "core/config/base.yaml",
             "core/config/sample.yaml",
-            "core/config/dev.yaml",
             "core/config/schema.json",
         ]
         for rel in expected:
@@ -87,14 +89,87 @@ class TestRefactorStructure(unittest.TestCase):
         self.assertTrue(migration_files, "migration files")
 
     def test_gitignore_matches_current_project_layout(self):
-        content = GITIGNORE.read_text(encoding="utf-8")
-        self.assertIn(".venv/", content)
-        self.assertIn("__pycache__/", content)
-        self.assertIn("logs/", content)
-        self.assertIn("uploads/", content)
-        self.assertNotIn("src/config/*", content)
-        self.assertNotIn("!src/config/sample.py", content)
-        self.assertNotIn("src/logs/", content)
+        ignored_paths = {
+            ".venv/bin/python",
+            "venv/bin/python",
+            ".vscode/settings.json",
+            ".idea/workspace.xml",
+            "src/__pycache__/app.cpython-312.pyc",
+            "src/app.pyc",
+            "src/app.pyo",
+            "src/app.pyd",
+            ".pytest_cache/README.md",
+            ".mypy_cache/cache.json",
+            ".ruff_cache/cache.bin",
+            ".DS_Store",
+            "src/.DS_Store",
+            ".coverage",
+            ".coverage.worker-1",
+            "htmlcov/index.html",
+            "build/lib/app.py",
+            "dist/package.whl",
+            "src/e_starter.egg-info/PKG-INFO",
+            "app.log",
+            "logs/events.json",
+            "src/logs/events.json",
+            "uploads/photo.png",
+            "src/uploads/photo.png",
+            "dump.rdb",
+            ".env",
+            ".env.local",
+            "src/.env",
+            "src/.env.production",
+            "src/core/config/dev.yaml",
+            "src/core/config/production.yaml",
+            "src/core/config/local.yml",
+        }
+        kept_paths = {
+            ".env.example",
+            ".env.sample",
+            ".env.template",
+            "src/.env.example",
+            "src/.env.sample",
+            "src/.env.template",
+            "src/core/config/base.yaml",
+            "src/core/config/sample.yaml",
+            "src/core/config/schema.json",
+            "src/core/config/__init__.py",
+            "src/app.py",
+            "src/domains/audit/controller/logs/__init__.py",
+            "src/domains/audit/controller/logs/api.py",
+            "src/domains/audit/controller/logs/schemas.py",
+            "src/domains/example/controller/logs/api.py",
+            "src/domains/example/controller/uploads/api.py",
+            "src/domains/example/controller/uploads/schemas.py",
+            "src/tests/fixtures/config.yaml",
+            "src/tests/fixtures/database.sqlite3",
+            "migrations/demo/0_initial.py",
+            "migrations/demo/schema.sql",
+            "src/requirements.txt",
+            "pyproject.toml",
+            "poetry.lock",
+            "uv.lock",
+            "Pipfile.lock",
+            "AGENTS.md",
+            "README.md",
+        }
+        git = ["git", "-c", f"core.excludesFile={os.devnull}"]
+        with tempfile.TemporaryDirectory() as directory:
+            subprocess.run(
+                [*git, "init", "--quiet", "--template=", directory],
+                check=True, capture_output=True, text=True, timeout=10,
+            )
+            (Path(directory) / ".gitignore").write_text(
+                GITIGNORE.read_text(encoding="utf-8"), encoding="utf-8",
+            )
+            result = subprocess.run(
+                [*git, "check-ignore", "--no-index", "--stdin", "-z"],
+                input="\0".join(sorted(ignored_paths | kept_paths)) + "\0",
+                cwd=directory, capture_output=True, text=True, timeout=10,
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
+            actual_ignored = set(result.stdout.split("\0")) - {""}
+            self.assertEqual(actual_ignored, ignored_paths)
 
     def test_source_tree_contains_no_chinese_text(self):
         for root in [SRC, ROOT / "docs", ROOT / "README.md"]:
@@ -266,13 +341,11 @@ class TestRefactorStructure(unittest.TestCase):
     def test_config_includes_sanic_worker_settings(self):
         config_content = (SRC / "core/config/__init__.py").read_text(encoding="utf-8")
         base_yaml = (SRC / "core/config/base.yaml").read_text(encoding="utf-8")
-        dev_yaml = (SRC / "core/config/dev.yaml").read_text(encoding="utf-8")
         sample_yaml = (SRC / "core/config/sample.yaml").read_text(encoding="utf-8")
         schema = json.loads((SRC / "core/config/schema.json").read_text(encoding="utf-8"))
 
         self.assertIn("sanic_workers: int = 1", config_content)
         self.assertIn("sanic_workers: 1", base_yaml)
-        self.assertIn("sanic_workers: 1", dev_yaml)
         self.assertIn("sanic_workers: 1", sample_yaml)
         self.assertIn("sanic_workers", schema["properties"])
         self.assertEqual(schema["properties"]["sanic_workers"]["minimum"], 1)
@@ -686,7 +759,7 @@ class TestRefactorStructure(unittest.TestCase):
         self.assertNotIn('"auto_generate_schema"', schema_content)
 
     def test_yaml_config_files_reference_schema(self):
-        for rel in ["core/config/base.yaml", "core/config/sample.yaml", "core/config/dev.yaml"]:
+        for rel in ["core/config/base.yaml", "core/config/sample.yaml"]:
             with self.subTest(path=rel):
                 first_line = (SRC / rel).read_text(encoding="utf-8").splitlines()[0]
                 self.assertEqual(first_line, "# yaml-language-server: $schema=./schema.json")

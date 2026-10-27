@@ -41,8 +41,9 @@ git clone https://github.com/Accec/E-Start-Backend
    ```bash
    cd ../../..
    ```
-6. Open `src/.env` with a text editor (like `vi`):
+6. Copy the environment template and open the local file with a text editor (like `vi`):
    ```bash
+   cp src/.env.example src/.env
    vi src/.env
    ```
 7. Set the mode to development by updating the MODE environment variable:
