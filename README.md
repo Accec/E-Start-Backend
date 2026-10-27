@@ -2,6 +2,8 @@
 
 E-Starter is a simple and easy-to-use backend framework designed for small to medium-sized projects. It provides a robust starting point for developers looking to jumpstart their application development without dealing with complex configurations.
 
+For AI-assisted development, follow the [project development rules](AGENTS.md).
+
 ### Prerequisites
 
 - Python (Python 3.12 recommended)
